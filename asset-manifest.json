@@ -1,0 +1,16 @@
+{
+  "files": {
+    "main.css": "/turmap/static/css/main.f855e6bc.css",
+    "main.js": "/turmap/static/js/main.98419f0d.js",
+    "static/js/453.be88d1bd.chunk.js": "/turmap/static/js/453.be88d1bd.chunk.js",
+    "static/media/logo.svg": "/turmap/static/media/logo.6ce24c58023cc2f8fd88fe9d219db6c6.svg",
+    "index.html": "/turmap/index.html",
+    "main.f855e6bc.css.map": "/turmap/static/css/main.f855e6bc.css.map",
+    "main.98419f0d.js.map": "/turmap/static/js/main.98419f0d.js.map",
+    "453.be88d1bd.chunk.js.map": "/turmap/static/js/453.be88d1bd.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.f855e6bc.css",
+    "static/js/main.98419f0d.js"
+  ]
+}
