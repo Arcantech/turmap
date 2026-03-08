@@ -1,0 +1,720 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Hex Tournament Map Portable</title>
+<style>
+  :root{
+    --bg:#020617; --panel:#0f172a; --panel2:#111827; --line:#334155; --text:#f8fafc; --muted:#94a3b8;
+    --cyan:#0891b2; --amber:#d97706; --green:#059669; --red:#dc2626;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:radial-gradient(circle at top,#1e293b 0%,#020617 60%,#01030a 100%);color:var(--text)}
+  .app{max-width:1800px;margin:0 auto;padding:14px;display:grid;gap:14px}
+  .top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .title h1{margin:0;font-size:28px}
+  .title p{margin:6px 0 0;color:var(--muted)}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .layout{display:grid;grid-template-columns:minmax(0,1.45fr) 430px;gap:14px}
+  .layout.viewer{grid-template-columns:1fr}
+  .card{background:rgba(15,23,42,.86);border:1px solid #1e293b;border-radius:28px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.35)}
+  .btn,.inp,select,textarea{font:inherit}
+  .btn{background:#0b1220;color:var(--text);border:1px solid var(--line);padding:10px 14px;border-radius:16px;cursor:pointer}
+  .btn:hover{filter:brightness(1.08)}
+  .btn.primary{background:#1d4ed8;border-color:#1d4ed8}
+  .btn.success{background:#059669;border-color:#059669}
+  .btn.warn{background:#d97706;border-color:#d97706}
+  .btn.danger{background:#dc2626;border-color:#dc2626}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .inp, select, textarea{width:100%;background:#020617;color:var(--text);border:1px solid var(--line);padding:10px 12px;border-radius:14px}
+  textarea{min-height:96px;resize:vertical}
+  .switchbox{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#0b1220;border:1px solid var(--line);border-radius:16px}
+  .mapHead{padding:12px 16px;border-bottom:1px solid #1e293b;background:rgba(2,6,23,.6);display:grid;gap:10px}
+  .phase{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+  .phaseCard{padding:12px 16px;border-radius:18px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+  .phaseCard.setup{background:var(--cyan)}
+  .phaseCard.scoring{background:var(--amber)}
+  .phaseCard.movement{background:var(--green)}
+  .phaseCard small{display:block;opacity:.9;text-transform:uppercase;letter-spacing:.08em}
+  .phaseCard strong{display:block;font-size:22px;margin-top:4px}
+  .phaseCard span{display:block;font-size:14px;margin-top:6px;opacity:.95}
+  .badges{display:flex;gap:8px;flex-wrap:wrap}
+  .badge{background:#1e293b;padding:7px 10px;border-radius:999px;font-size:13px}
+  .hint{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:12px;color:#cbd5e1}
+  .editorHint{padding:9px 12px;background:rgba(6,182,212,.12);border:1px solid rgba(6,182,212,.38);border-radius:14px;color:#cffafe}
+  .mapWrap{position:relative;height:75vh;overflow:hidden;background:
+    radial-gradient(circle at 20% 20%,rgba(56,189,248,.12),transparent 22%),
+    radial-gradient(circle at 80% 10%,rgba(168,85,247,.12),transparent 18%),
+    radial-gradient(circle at 50% 100%,rgba(34,197,94,.08),transparent 22%),
+    radial-gradient(circle at top,#1e293b 0%,#020617 55%,#01030a 100%);
+  }
+  .gridbg{position:absolute;inset:0;pointer-events:none;opacity:.2;background-image:
+    linear-gradient(rgba(148,163,184,.08) 1px, transparent 1px),
+    linear-gradient(90deg,rgba(148,163,184,.08) 1px, transparent 1px);background-size:32px 32px}
+  #mapSvg{position:relative;width:100%;height:100%;display:block}
+  .side{padding:16px}
+  .sideTitle{font-size:22px;font-weight:700;margin:0 0 14px}
+  .tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;background:#1e293b;padding:4px;border-radius:16px;margin-bottom:14px}
+  .tab{background:transparent;border:none;color:var(--text);padding:10px;border-radius:12px;cursor:pointer}
+  .tab.active{background:#0f172a}
+  .panel{display:none;gap:12px}
+  .panel.active{display:grid}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end}
+  .field{display:grid;gap:6px}
+  .sep{height:1px;background:#1e293b}
+  .logList{display:grid;gap:8px;max-height:62vh;overflow:auto}
+  .log{padding:10px 12px;border-radius:16px;background:#020617aa;border:1px solid #1e293b;font-size:14px}
+  .small{font-size:12px;color:#cbd5e1}
+  .team{padding:12px;border-radius:18px;background:#020617aa;border:1px solid #1e293b;display:grid;gap:10px}
+  .teamHead{display:flex;justify-content:space-between;gap:8px;align-items:center}
+  .dot{width:12px;height:12px;border-radius:999px;display:inline-block}
+  .modal{position:fixed;inset:0;background:rgba(2,6,23,.7);display:none;align-items:center;justify-content:center;padding:16px;z-index:100}
+  .modal.open{display:flex}
+  .dialog{max-width:560px;width:100%;background:#020617;border:1px solid #1e293b;border-radius:28px;padding:18px;display:grid;gap:14px}
+  .dialog h3{margin:0;font-size:28px}
+  .dialogActions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+  .movePills{display:flex;gap:8px;flex-wrap:wrap}
+  @media (max-width:1100px){ .layout{grid-template-columns:1fr} .mapWrap{height:58vh} }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <div class="title">
+      <h1>Турнирная карта гексов</h1>
+      <p>Portable HTML — открывается прямо с флэшки двойным кликом</p>
+    </div>
+    <div class="row">
+      <div class="switchbox">
+        <span>Туман войны</span>
+        <input type="checkbox" id="fogToggle" checked>
+      </div>
+      <button class="btn" id="modeBtn">Режим зрителей</button>
+      <button class="btn" id="undoBtn">Undo</button>
+      <button class="btn" id="resetBtn">Сброс</button>
+    </div>
+  </div>
+
+  <div class="layout" id="layout">
+    <div class="card">
+      <div class="mapHead">
+        <div class="phase">
+          <div class="phaseCard" id="phaseCard">
+            <small>Статус игры</small>
+            <strong id="phaseTitle"></strong>
+            <span id="phaseSubtitle"></span>
+          </div>
+          <div class="row" id="phaseButtons"></div>
+        </div>
+        <div class="badges" id="badges"></div>
+        <div class="hint">
+          <div id="mainHint"></div>
+          <div class="editorHint" id="editorHint"></div>
+          <div class="movePills" id="movePills"></div>
+        </div>
+      </div>
+      <div class="mapWrap">
+        <div class="gridbg"></div>
+        <svg id="mapSvg"></svg>
+      </div>
+    </div>
+
+    <div class="card" id="sideCard">
+      <div class="side">
+        <div class="sideTitle">Панель ведущего</div>
+        <div class="tabs" id="tabs"></div>
+        <div class="panel" id="panel-editor"></div>
+        <div class="panel" id="panel-round"></div>
+        <div class="panel" id="panel-teams"></div>
+        <div class="panel" id="panel-log"></div>
+        <div class="panel" id="panel-view"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="duelModal">
+  <div class="dialog">
+    <h3>Дуэль — вызов брошен!</h3>
+    <div class="small">Сразитесь офлайн и укажите победителя. Победитель остаётся на спорном гексе, после чего выберите соседний гекс для отступления проигравшего.</div>
+    <div class="grid2" id="duelButtons"></div>
+    <div class="dialogActions"><button class="btn" onclick="closeDuel()">Отмена</button></div>
+  </div>
+</div>
+
+<div class="modal" id="fogModal">
+  <div class="dialog">
+    <h3>Убрать туман войны?</h3>
+    <div class="small">Вы точно хотите убрать туман войны? Все увидят карту!</div>
+    <div class="dialogActions">
+      <button class="btn" onclick="closeFog()">Отмена</button>
+      <button class="btn danger" onclick="confirmFogOff()">Убрать туман</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="winnerModal">
+  <div class="dialog">
+    <h3>Победа!</h3>
+    <div id="winnerText"></div>
+    <div class="dialogActions"><button class="btn" onclick="closeWinner()">Закрыть окно</button></div>
+  </div>
+</div>
+
+<script>
+const TEAM_PRESETS=[
+  { id:'red', name:'Красные', color:'#ef4444' },
+  { id:'blue', name:'Синие', color:'#3b82f6' },
+  { id:'green', name:'Зелёные', color:'#22c55e' },
+  { id:'yellow', name:'Жёлтые', color:'#eab308' },
+  { id:'purple', name:'Фиолетовые', color:'#a855f7' },
+  { id:'orange', name:'Оранжевые', color:'#f97316' },
+];
+const TERRAIN_META={
+  plain:{ label:'Равнина', cost:1, grad1:'#3fbf73', grad2:'#1b6d47', accent:'#86efac' },
+  forest:{ label:'Лес', cost:1, grad1:'#1f7a45', grad2:'#0b3b23', accent:'#4ade80' },
+  swamp:{ label:'Болото', cost:2, grad1:'#6b8e23', grad2:'#3f4f14', accent:'#bef264' },
+  mountain:{ label:'Горы', cost:999, grad1:'#94a3b8', grad2:'#475569', accent:'#e2e8f0' },
+};
+const BONUS_META={
+  energy:{ label:'Энергостанция', color:'#f59e0b' },
+  scanner:{ label:'Сканер', color:'#06b6d4' },
+  boost:{ label:'Форсаж', color:'#8b5cf6' },
+  shield:{ label:'Щит', color:'#10b981' },
+};
+const PHASE_META={
+  setup:{ cls:'setup', title:'Настройка карты', subtitle:'Подготовьте карту, базы, флаг, бонусы и команды.' },
+  scoring:{ cls:'scoring', title:'Идёт битва! — Начислить ходы', subtitle:'Введите результаты активности и начислите ходы командам.' },
+  movement:{ cls:'movement', title:'Идёт битва! — Сделайте ходы', subtitle:'Ходы начислены. Команды по очереди перемещаются по карте.' },
+};
+
+let state = createDemoState();
+
+function id(){ return 'id-'+Date.now()+'-'+Math.random().toString(16).slice(2); }
+function key(q,r){ return `${q},${r}`; }
+function parse(k){ const [q,r]=k.split(',').map(Number); return {q,r}; }
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+function byId(teamId){ return state.teams.find(t=>t.id===teamId); }
+function occupantAt(k, except){ return state.teams.find(t=>t.posKey===k && t.id!==except) || null; }
+function flagKey(){ return Object.keys(state.map.hexes).find(k=>state.map.hexes[k].special==='flag') || null; }
+function missingBaseTeams(){ return state.teams.filter(t=>!t.baseKey); }
+function log(text){ state.logs.unshift({id:id(), text, ts:Date.now()}); }
+function pushHistory(){ state.history.push(clone({...state, history:[]})); if(state.history.length>30) state.history.shift(); }
+function mutate(fn){ pushHistory(); fn(); render(); }
+function undo(){ if(!state.history.length) return; state = state.history.pop(); render(); }
+function currentTeam(){ return byId(state.activeTeamId); }
+
+function createInitialTeams(count=4){
+  return TEAM_PRESETS.slice(0,count).map(t=>({...t,posKey:null,baseKey:null,movement:0,score:0,supportTokens:0,activeEffects:{boost:false,shield:false,ignoreSwampOnce:false}}));
+}
+function createRectMap(cols=8, rows=7){
+  const hexes={}; for(let r=0;r<rows;r++) for(let q=0;q<cols;q++) hexes[key(q,r)]={q,r,terrain:'plain',fog:true,special:null,bonusType:null,bonusUsed:false,teamBaseId:null};
+  return {shape:'rect', cols, rows, radius:4, hexes};
+}
+function createRoundMap(radius=4){
+  const hexes={};
+  for(let q=-radius;q<=radius;q++){ const r1=Math.max(-radius,-q-radius), r2=Math.min(radius,-q+radius); for(let r=r1;r<=r2;r++) hexes[key(q,r)]={q,r,terrain:'plain',fog:true,special:null,bonusType:null,bonusUsed:false,teamBaseId:null}; }
+  return {shape:'round', cols:0, rows:0, radius, hexes};
+}
+function rectOffsetToCube(col,row){ const x = col - (row - (row&1))/2, z=row, y=-x-z; return {x,y,z}; }
+function mapDistance(a,b){
+  if(state.map.shape==='rect'){
+    const ac=rectOffsetToCube(a.q,a.r), bc=rectOffsetToCube(b.q,b.r);
+    return Math.max(Math.abs(ac.x-bc.x), Math.abs(ac.y-bc.y), Math.abs(ac.z-bc.z));
+  }
+  const dq=a.q-b.q, dr=a.r-b.r, ds=(-a.q-a.r)-(-b.q-b.r);
+  return (Math.abs(dq)+Math.abs(dr)+Math.abs(ds))/2;
+}
+function neighbors(q,r){
+  if(state.map.shape==='rect'){
+    const odd=r%2===1;
+    return odd ? [{q:q-1,r},{q:q+1,r},{q,r:r-1},{q:q+1,r:r-1},{q,r:r+1},{q:q+1,r:r+1}] :
+                 [{q:q-1,r},{q:q+1,r},{q:q-1,r:r-1},{q,r:r-1},{q:q-1,r:r+1},{q,r:r+1}];
+  }
+  return [{q:q+1,r},{q:q-1,r},{q,r:r+1},{q,r:r-1},{q:q+1,r:r-1},{q:q-1,r:r+1}];
+}
+function revealAround(centerKey,radius=1){
+  if(!centerKey) return;
+  const c=parse(centerKey);
+  Object.values(state.map.hexes).forEach(h=>{ if(mapDistance(c,h)<=radius) state.map.hexes[key(h.q,h.r)].fog=false; });
+}
+function applyDemoStyling(local){
+  const keys=Object.keys(local.map.hexes);
+  keys.forEach((k,i)=>{
+    const h=local.map.hexes[k];
+    if((h.q+h.r)%7===0) h.terrain='forest';
+    if((h.q*3+h.r)%11===0) h.terrain='swamp';
+    if((h.q*5+h.r)%13===0) h.terrain='mountain';
+    if(i%19===0 && h.terrain!=='mountain'){ h.special='bonus'; h.bonusType=Object.keys(BONUS_META)[i%4]; }
+  });
+}
+function createDemoState(){
+  const local = {
+    mode:'host', activeTab:'editor', phase:'setup', currentRound:1, activeTeamId:'red',
+    map:createRectMap(8,7), teams:createInitialTeams(4), winner:null, confirmFogOff:false, duel:null, retreatSelection:null,
+    settings:{showCoords:true, showCosts:false, showFog:true, showBonuses:true, vividGrid:true, victoryScore:5},
+    editor:{tool:'terrain', terrainType:'plain', bonusType:'energy', teamForBase:'red', roundRadius:4, rectCols:8, rectRows:7, teamCount:4},
+    logs:[], history:[], importText:''
+  };
+  applyDemoStyling(local);
+  const cells = Object.values(local.map.hexes).filter(h=>h.terrain!=='mountain').sort((a,b)=>(a.r-b.r)||(a.q-b.q));
+  const bases=[key(cells[0].q,cells[0].r), key(cells[4].q,cells[4].r), key(cells[cells.length-5].q,cells[cells.length-5].r), key(cells[cells.length-1].q,cells[cells.length-1].r)];
+  local.teams.forEach((t,i)=>{ t.baseKey=bases[i]; t.posKey=bases[i]; local.map.hexes[bases[i]].special='base'; local.map.hexes[bases[i]].teamBaseId=t.id; });
+  const f = cells[Math.floor(cells.length/2)]; local.map.hexes[key(f.q,f.r)].special='flag';
+  state = local;
+  bases.forEach(b=>revealAround(b,1)); revealAround(key(f.q,f.r),0);
+  local.logs.unshift({id:id(), text:'Демо-карта готова. Можно сразу проводить раунд.', ts:Date.now()});
+  return local;
+}
+
+function hexPoints(cx,cy,size){
+  const pts=[]; for(let i=0;i<6;i++){ const a=(Math.PI/180)*(60*i-30); pts.push(`${cx+size*Math.cos(a)},${cy+size*Math.sin(a)}`); } return pts.join(' ');
+}
+function hexPixel(q,r,size){
+  if(state.map.shape==='rect') return {x:size*Math.sqrt(3)*(q + (r%2===1?0.5:0)), y:size*1.5*r};
+  return {x:size*Math.sqrt(3)*(q + r/2), y:size*1.5*r};
+}
+function computeReachable(team){
+  if(!team || !team.posKey || team.movement<=0) return [];
+  const queue=[{key:team.posKey, remaining:team.movement}], best=new Map([[team.posKey,team.movement]]), result=new Set();
+  while(queue.length){
+    const cur=queue.shift(), p=parse(cur.key);
+    for(const n of neighbors(p.q,p.r)){
+      const nk=key(n.q,n.r), hex=state.map.hexes[nk];
+      if(!hex || hex.terrain==='mountain') continue;
+      const occ=occupantAt(nk, team.id);
+      const cost=hex.terrain==='swamp' && (team.activeEffects.boost || team.activeEffects.ignoreSwampOnce) ? 1 : TERRAIN_META[hex.terrain].cost;
+      const next=cur.remaining-cost; if(next<0) continue;
+      if(occ && occ.id!==team.id){ result.add(nk); continue; }
+      if(!best.has(nk) || best.get(nk)<next){ best.set(nk,next); queue.push({key:nk, remaining:next}); if(nk!==team.posKey) result.add(nk); }
+    }
+  }
+  return [...result];
+}
+function retreatOptions(contestedKey, loserId, winnerId){
+  const c=parse(contestedKey);
+  return neighbors(c.q,c.r).map(n=>key(n.q,n.r)).filter(nk=>{
+    const hex=state.map.hexes[nk]; if(!hex || hex.terrain==='mountain' || nk===contestedKey) return false;
+    const occ=occupantAt(nk, loserId); if(occ && occ.id!==winnerId) return false;
+    return true;
+  });
+}
+function nextTeam(){
+  const idx=state.teams.findIndex(t=>t.id===state.activeTeamId);
+  return state.teams[(idx+1)%state.teams.length]?.id || state.activeTeamId;
+}
+function leaderTeam(){
+  const fk=flagKey(); if(!fk) return state.teams[0] || null;
+  return [...state.teams].filter(t=>t.posKey).sort((a,b)=>mapDistance(parse(a.posKey),parse(fk))-mapDistance(parse(b.posKey),parse(fk)) || b.score-a.score)[0] || null;
+}
+
+function handleMapClick(k){
+  if(state.activeTab==='editor' && state.mode==='host'){
+    mutate(()=>{
+      const hex=state.map.hexes[k]; if(!hex) return;
+      if(state.editor.tool==='terrain'){
+        hex.terrain=state.editor.terrainType;
+        if(hex.terrain==='mountain'){ hex.special=null; hex.bonusType=null; hex.bonusUsed=false; hex.teamBaseId=null; state.teams.forEach(t=>{ if(t.baseKey===k) t.baseKey=null; if(t.posKey===k) t.posKey=null; }); }
+        log(`Гекс ${k} изменён: ${TERRAIN_META[state.editor.terrainType].label}.`);
+      } else if(state.editor.tool==='bonus'){
+        if(hex.terrain!=='mountain'){ hex.special='bonus'; hex.bonusType=state.editor.bonusType; hex.bonusUsed=false; hex.fog=false; log(`На гексе ${k} установлен бонус: ${BONUS_META[state.editor.bonusType].label}.`); }
+      } else if(state.editor.tool==='flag'){
+        Object.values(state.map.hexes).forEach(h=>{ if(h.special==='flag') h.special=null; });
+        if(hex.terrain!=='mountain'){ hex.special='flag'; hex.bonusType=null; hex.fog=false; log(`Флаг перенесён на ${k}.`); }
+      } else if(state.editor.tool==='base'){
+        const team=byId(state.editor.teamForBase);
+        if(team && hex.terrain!=='mountain'){
+          Object.values(state.map.hexes).forEach(h=>{ if(h.teamBaseId===team.id){ h.teamBaseId=null; if(h.special==='base') h.special=null; } });
+          hex.special='base'; hex.teamBaseId=team.id; hex.fog=false; team.baseKey=k; team.posKey=k; revealAround(k,1); log(`База команды ${team.name} установлена на ${k}.`);
+        }
+      } else if(state.editor.tool==='clear'){
+        const old=state.teams.find(t=>t.baseKey===k); if(old){ old.baseKey=null; if(old.posKey===k) old.posKey=null; }
+        hex.special=null; hex.bonusType=null; hex.bonusUsed=false; hex.teamBaseId=null; log(`С гекса ${k} удалены специальные свойства.`);
+      }
+    });
+    return;
+  }
+
+  if(state.retreatSelection && state.retreatSelection.options.includes(k)){
+    mutate(()=>{
+      const loser=byId(state.retreatSelection.loserId); if(loser){ loser.posKey=k; revealAround(k,1); log(`${loser.name} отступили на ${k} после дуэли.`); }
+      state.retreatSelection=null;
+    });
+    return;
+  }
+
+  if(state.mode==='host' && state.phase==='movement' && state.activeTab!=='editor' && !state.winner){
+    const team=currentTeam(); if(!team) return;
+    const reachable=computeReachable(team); if(!reachable.includes(k)) return;
+    mutate(()=>{
+      const t=currentTeam(); const hex=state.map.hexes[k]; if(!t || !hex || !t.posKey) return;
+      if(mapDistance(parse(t.posKey), parse(k))!==1){ log(`Недопустимый ход ${t.name}: можно идти только на соседний гекс.`); return; }
+      const cost=hex.terrain==='swamp' && (t.activeEffects.boost || t.activeEffects.ignoreSwampOnce) ? 1 : TERRAIN_META[hex.terrain].cost;
+      if(hex.terrain==='mountain' || cost>t.movement){ log(`Недопустимый ход ${t.name}: не хватает очков хода или препятствие.`); return; }
+      const occ=occupantAt(k, t.id);
+      if(occ){ state.duel={attackerId:t.id, defenderId:occ.id, contestedKey:k, attackerFrom:t.posKey}; render(); openDuel(); return; }
+
+      t.posKey=k; t.movement-=cost;
+      if(hex.terrain==='swamp' && t.activeEffects.ignoreSwampOnce) t.activeEffects.ignoreSwampOnce=false;
+      if(hex.terrain==='swamp' && t.activeEffects.boost) t.activeEffects.boost=false;
+      revealAround(k,1); log(`${t.name} переместились на ${k}.`);
+
+      if(hex.special==='bonus' && !hex.bonusUsed && hex.bonusType){
+        hex.bonusUsed=true; t.score+=1;
+        if(hex.bonusType==='energy') t.movement+=1;
+        if(hex.bonusType==='scanner') revealAround(k,2);
+        if(hex.bonusType==='boost'){ t.activeEffects.boost=true; t.activeEffects.ignoreSwampOnce=true; }
+        if(hex.bonusType==='shield') t.activeEffects.shield=true;
+        log(`${t.name} активировали бонус: ${BONUS_META[hex.bonusType].label}.`);
+      }
+
+      if(hex.special==='flag'){ state.winner={teamId:t.id, reason:'Флаг захвачен'}; }
+      if(t.score>=state.settings.victoryScore && !state.winner){ state.winner={teamId:t.id, reason:'Победа по очкам'}; }
+      const total=state.teams.reduce((s,x)=>s+(x.movement||0),0);
+      if(total<=0 && !state.winner){ state.phase='scoring'; state.activeTab='round'; log('У всех команд закончились ходы. Начислите новые ходы после следующей битвы.'); }
+    });
+  }
+}
+function resolveDuel(winnerId){
+  mutate(()=>{
+    const d=state.duel; if(!d) return;
+    const attacker=byId(d.attackerId), defender=byId(d.defenderId); if(!attacker || !defender) return;
+    const loser = winnerId===attacker.id ? defender : attacker;
+    const winner = winnerId===attacker.id ? attacker : defender;
+
+    if(winner.id===attacker.id){
+      winner.posKey=d.contestedKey;
+      const hex=state.map.hexes[d.contestedKey];
+      const cost=hex.terrain==='swamp' && (winner.activeEffects.boost || winner.activeEffects.ignoreSwampOnce) ? 1 : TERRAIN_META[hex.terrain].cost;
+      winner.movement=Math.max(0,winner.movement-cost);
+    }
+
+    if(loser.activeEffects.shield){
+      loser.activeEffects.shield=false;
+      loser.posKey = loser.id===attacker.id ? d.attackerFrom : loser.posKey;
+      log(`${loser.name} потратили щит и удержали безопасную позицию.`);
+    } else {
+      const opts=retreatOptions(d.contestedKey, loser.id, winner.id);
+      if(opts.length){ state.retreatSelection={loserId:loser.id,winnerId:winner.id,contestedKey:d.contestedKey,options:opts}; log(`${loser.name} проиграли дуэль. Победитель выбирает соседний гекс для отступления.`); }
+      else { loser.posKey=loser.baseKey; log(`${loser.name} проиграли дуэль и были отправлены на базу, так как рядом не было свободных гексов.`); }
+    }
+
+    winner.score+=1; revealAround(winner.posKey,1); log(`Победитель дуэли: ${winner.name}.`);
+    if(winner.score>=state.settings.victoryScore) state.winner={teamId:winner.id, reason:'Победа по очкам'};
+    if(winner.posKey===flagKey() && !state.winner) state.winner={teamId:winner.id, reason:'Флаг захвачен'};
+    state.duel=null;
+  });
+  closeDuel();
+}
+function startTournament(){
+  mutate(()=>{
+    const miss=missingBaseTeams();
+    if(miss.length){ log(`Нельзя начать турнир: не расставлены базы для команд: ${miss.map(t=>t.name).join(', ')}.`); return; }
+    state.phase='scoring'; state.activeTab='round'; state.settings.showFog=true; state.teams.forEach(t=>t.movement=0);
+    log('Турнир начался. Туман войны включён. Ожидается начисление ходов после первой битвы.');
+  });
+}
+function assignMoves(placements){
+  mutate(()=>{
+    state.teams.forEach(t=>{ const p=Number(placements[t.id]||0); t.movement = p===1?3 : p===2?2 : (p===3||p===4)?1 : 0; });
+    const fk=flagKey();
+    if(fk){
+      const lead=Math.min(...state.teams.filter(t=>t.posKey).map(t=>mapDistance(parse(t.posKey),parse(fk))));
+      state.teams.forEach(t=>{ if(!t.posKey) return; const dist=mapDistance(parse(t.posKey),parse(fk)); if(dist-lead>=4){ t.supportTokens+=1; log(`${t.name} получили жетон поддержки за отставание.`); } });
+    }
+    state.phase='movement'; state.activeTab='round'; log('Очки движения начислены по местам в активности.');
+  });
+}
+function requestToggleFog(v){ if(!v && state.phase!=='setup'){ document.getElementById('fogModal').classList.add('open'); document.getElementById('fogToggle').checked=true; return; } mutate(()=>{ state.settings.showFog=v; }); }
+function closeFog(){ document.getElementById('fogModal').classList.remove('open'); }
+function confirmFogOff(){ mutate(()=>{ state.settings.showFog=false; }); closeFog(); document.getElementById('fogToggle').checked=false; }
+function closeWinner(){ mutate(()=>{ state.winner=null; }); document.getElementById('winnerModal').classList.remove('open'); }
+function closeDuel(){ document.getElementById('duelModal').classList.remove('open'); }
+
+function renderTop(){
+  const phase=PHASE_META[state.phase];
+  const pc=document.getElementById('phaseCard'); pc.className='phaseCard '+phase.cls;
+  document.getElementById('phaseTitle').textContent=phase.title;
+  document.getElementById('phaseSubtitle').textContent=phase.subtitle;
+  const pb=document.getElementById('phaseButtons'); pb.innerHTML='';
+  if(state.phase==='setup'){ const b=mkBtn('Начать турнир!','primary', startTournament); b.disabled=missingBaseTeams().length>0 || !state.teams.length; pb.appendChild(b); }
+  if(state.phase==='scoring'){ pb.appendChild(mkBtn('Ходить','success', ()=>mutate(()=>{ state.phase='movement'; state.activeTab='round'; log('Статус изменён: команды делают ходы.'); }))); }
+
+  const badges=document.getElementById('badges'); badges.innerHTML='';
+  badges.appendChild(badge('Раунд '+state.currentRound));
+  if(currentTeam()) badges.appendChild(badge(`${currentTeam().name}: ${currentTeam().movement} х.`, currentTeam().color));
+  const leader=leaderTeam(); if(leader) badges.appendChild(badge(`Лидер: ${leader.name}`, '#d97706'));
+  badges.appendChild(badge(`Победа: флаг или ${state.settings.victoryScore} очков`));
+
+  document.getElementById('mainHint').textContent =
+    state.retreatSelection ? 'Выберите подсвеченный соседний гекс: туда будет отступать проигравший после дуэли.' :
+    state.phase==='movement' ? 'Клик по подсвеченному гексу перемещает активную команду. Когда у всех команд закончатся ходы, статус автоматически вернётся к начислению ходов.' :
+    state.phase==='scoring' ? 'Сейчас перемещение отключено. Введите результаты активности в панели справа и нажмите «Начислить ходы».' :
+    missingBaseTeams().length===0 ? 'Сейчас идёт подготовка карты. Все базы расставлены, турнир можно запускать.' :
+    `Сейчас идёт подготовка карты. Нужно расставить базы для всех команд: ${missingBaseTeams().map(t=>t.name).join(', ')}.`;
+
+  const eh=document.getElementById('editorHint');
+  if(state.activeTab==='editor' && state.mode==='host'){
+    eh.style.display='block';
+    eh.textContent = 'Сейчас ставите: ' + (
+      state.editor.tool==='terrain' ? TERRAIN_META[state.editor.terrainType].label :
+      state.editor.tool==='bonus' ? `Бонус — ${BONUS_META[state.editor.bonusType].label}` :
+      state.editor.tool==='flag' ? 'Флаг' :
+      state.editor.tool==='base' ? `База — ${byId(state.editor.teamForBase)?.name || ''}` : 'Очистить'
+    );
+  } else eh.style.display='none';
+
+  const pills=document.getElementById('movePills'); pills.innerHTML='';
+  if(state.phase!=='setup'){ state.teams.forEach(t=>pills.appendChild(badge(`${t.name}: ${t.movement}`, t.color))); }
+
+  document.getElementById('fogToggle').checked=!!state.settings.showFog;
+  document.getElementById('modeBtn').textContent = state.mode==='host' ? 'Режим зрителей' : 'Режим ведущего';
+}
+function renderLayout(){
+  const layout=document.getElementById('layout');
+  layout.className='layout' + (state.mode==='viewer' ? ' viewer' : '');
+  document.getElementById('sideCard').style.display = state.mode==='host' ? '' : 'none';
+}
+function badge(text,bg){
+  const s=document.createElement('span'); s.className='badge'; s.textContent=text; if(bg){ s.style.background=bg; s.style.color='#fff'; } return s;
+}
+function mkBtn(text, cls, onClick){
+  const b=document.createElement('button'); b.className='btn'+(cls?' '+cls:''); b.textContent=text; b.onclick=onClick; return b;
+}
+function renderTabs(){
+  const defs=[['editor','Редактор'],['round','Раунд'],['teams','Команды'],['log','Журнал'],['view','Вид']];
+  const wrap=document.getElementById('tabs'); wrap.innerHTML='';
+  defs.forEach(([id,label])=>{ const b=document.createElement('button'); b.className='tab'+(state.activeTab===id?' active':''); b.textContent=label; b.onclick=()=>{ state.activeTab=id; render(); }; wrap.appendChild(b); });
+}
+function showPanel(id){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+}
+function field(label, html){
+  const d=document.createElement('div'); d.className='field'; d.innerHTML=(label?`<label>${label}</label>`:'')+html; return d;
+}
+function renderEditor(){
+  const el=document.getElementById('panel-editor'); el.innerHTML='';
+  const shape=document.createElement('div'); shape.className='grid2';
+  shape.appendChild(mkBtn('Прямоугольная', state.map.shape==='rect'?'primary':'', ()=>mutate(()=>{ regenerate('rect'); })));
+  shape.appendChild(mkBtn('Круглая', state.map.shape==='round'?'primary':'', ()=>mutate(()=>{ regenerate('round'); })));
+  el.appendChild(shape);
+
+  el.appendChild(field('Количество команд', `
+    <div class="grid2" style="grid-template-columns:1fr auto">
+      <input class="inp" type="number" id="teamCountInput" min="2" max="6" value="${state.editor.teamCount}">
+      <button class="btn" id="teamCountApply">Применить</button>
+    </div>
+    <div class="small">После изменения количества команд расставьте базы для всех активных команд.</div>
+  `));
+
+  if(state.map.shape==='rect'){
+    el.appendChild(field('Размер прямоугольной карты', `
+      <div class="grid3">
+        <div class="field"><div class="small">Ширина</div><input class="inp" id="rectColsInput" type="number" min="2" max="80" value="${state.editor.rectCols}"></div>
+        <div class="field"><div class="small">Высота</div><input class="inp" id="rectRowsInput" type="number" min="2" max="40" value="${state.editor.rectRows}"></div>
+        <button class="btn" id="rectApply">Применить</button>
+      </div>
+      <div class="small">Например: ширина 50, высота 5.</div>
+    `));
+  } else {
+    el.appendChild(field('Радиус круглой карты (от центра)', `
+      <div class="grid2" style="grid-template-columns:1fr auto">
+        <input class="inp" id="roundRadiusInput" type="number" min="4" max="10" value="${state.editor.roundRadius}">
+        <button class="btn" id="roundApply">Применить</button>
+      </div>
+      <div class="small">Можно выбрать от 4 до 10 гексов от центра.</div>
+    `));
+  }
+
+  el.appendChild(sep());
+  el.appendChild(field('Инструмент', `<div class="grid2" id="toolButtons"></div>`));
+  if(state.editor.tool==='terrain') el.appendChild(field('', `<div class="grid2" id="terrainButtons"></div>`));
+  if(state.editor.tool==='bonus') el.appendChild(field('Тип бонуса', `<select id="bonusTypeSelect">${Object.entries(BONUS_META).map(([k,v])=>`<option value="${k}" ${state.editor.bonusType===k?'selected':''}>${v.label}</option>`).join('')}</select>`));
+  if(state.editor.tool==='base') el.appendChild(field('Команда для базы', `<select id="teamSelect">${state.teams.map(t=>`<option value="${t.id}" ${state.editor.teamForBase===t.id?'selected':''}>${t.name}</option>`).join('')}</select>`));
+
+  el.appendChild(sep());
+  const act=document.createElement('div'); act.className='grid2';
+  act.appendChild(mkBtn('Новая карта','', ()=>mutate(()=>{ newMap(); })));
+  act.appendChild(mkBtn('Демо-карта','', ()=>{ state=createDemoState(); render(); }));
+  el.appendChild(act);
+
+  document.getElementById('teamCountApply').onclick=()=>mutate(()=>{
+    const count=Math.max(2,Math.min(6,Number(document.getElementById('teamCountInput').value||4)));
+    state.editor.teamCount=count; state.teams=createInitialTeams(count); state.activeTeamId=state.teams[0]?.id || null; state.editor.teamForBase=state.teams[0]?.id || 'red';
+    log(`Количество команд изменено: ${count}. Расставьте базы заново.`);
+  });
+  const toolWrap=document.getElementById('toolButtons');
+  [['terrain','Ландшафт'],['bonus','Бонус'],['flag','Флаг'],['base','База'],['clear','Очистить']].forEach(([v,l])=>toolWrap.appendChild(mkBtn(l, state.editor.tool===v?'primary':'', ()=>{ state.editor.tool=v; render(); })));
+  const tw=document.getElementById('terrainButtons');
+  if(tw) Object.entries(TERRAIN_META).forEach(([k,v])=>tw.appendChild(mkBtn(v.label, state.editor.terrainType===k?'primary':'', ()=>{ state.editor.terrainType=k; render(); })));
+  const bs=document.getElementById('bonusTypeSelect'); if(bs) bs.onchange=e=>{ state.editor.bonusType=e.target.value; render(); };
+  const ts=document.getElementById('teamSelect'); if(ts) ts.onchange=e=>{ state.editor.teamForBase=e.target.value; render(); };
+  const ra=document.getElementById('rectApply'); if(ra) ra.onclick=()=>mutate(()=>{ state.editor.rectCols=Math.max(2,Math.min(80,Number(document.getElementById('rectColsInput').value||8))); state.editor.rectRows=Math.max(2,Math.min(40,Number(document.getElementById('rectRowsInput').value||7))); regenerate('rect'); });
+  const ro=document.getElementById('roundApply'); if(ro) ro.onclick=()=>mutate(()=>{ state.editor.roundRadius=Math.max(4,Math.min(10,Number(document.getElementById('roundRadiusInput').value||4))); regenerate('round'); });
+}
+function regenerate(shape){
+  const count=state.editor.teamCount || state.teams.length;
+  state.map = shape==='rect' ? createRectMap(state.editor.rectCols, state.editor.rectRows) : createRoundMap(state.editor.roundRadius);
+  state.teams = createInitialTeams(count); state.activeTeamId=state.teams[0]?.id || null; state.editor.teamForBase=state.teams[0]?.id || 'red';
+  state.phase='setup'; state.winner=null; state.duel=null; state.retreatSelection=null; state.logs=[{id:id(), text:`Создана новая ${shape==='rect'?'прямоугольная':'круглая'} карта.`, ts:Date.now()}];
+}
+function newMap(){
+  const count=state.teams.length;
+  state.map = state.map.shape==='rect' ? createRectMap(state.editor.rectCols, state.editor.rectRows) : createRoundMap(state.editor.roundRadius);
+  state.teams=createInitialTeams(count); state.currentRound=1; state.activeTeamId=state.teams[0]?.id || null; state.phase='setup'; state.winner=null; state.duel=null; state.retreatSelection=null; state.logs=[{id:id(), text:'Создана новая пустая карта.', ts:Date.now()}];
+}
+function renderRound(){
+  const el=document.getElementById('panel-round'); el.innerHTML='';
+  const top=document.createElement('div'); top.className='row'; top.style.justifyContent='space-between';
+  top.innerHTML=`<div><div class="small">Текущий раунд</div><div style="font-size:28px;font-weight:700">${state.currentRound}</div></div>`;
+  const ra=document.createElement('div'); ra.className='row';
+  ra.appendChild(mkBtn('След. раунд','', ()=>mutate(()=>{ state.currentRound+=1; state.teams.forEach(t=>t.movement=0); state.phase='scoring'; log(`Начат раунд ${state.currentRound}. Ожидается начисление ходов.`); })));
+  ra.appendChild(mkBtn('Сброс хода','', ()=>mutate(()=>{ state.teams.forEach(t=>t.movement=0); state.phase='scoring'; log('Очки движения раунда сброшены.'); })));
+  top.appendChild(ra); el.appendChild(top);
+
+  const list=document.createElement('div'); list.style.display='grid'; list.style.gap='8px';
+  state.teams.forEach((t,i)=>{
+    const r=document.createElement('div'); r.style.display='grid'; r.style.gridTemplateColumns='1fr 76px'; r.style.gap='8px'; r.style.alignItems='center';
+    r.innerHTML=`<div class="row"><span class="dot" style="background:${t.color}"></span><span>${t.name}</span></div><input class="inp" type="number" min="1" max="6" data-team="${t.id}" value="${i+1}">`;
+    list.appendChild(r);
+  });
+  el.appendChild(list);
+  const btn=document.createElement('button'); btn.className='btn'; btn.textContent='Начислить ходы'; btn.disabled=state.phase==='setup'; btn.onclick=()=>{ const placements={}; list.querySelectorAll('input[data-team]').forEach(i=>placements[i.dataset.team]=Number(i.value||0)); assignMoves(placements); };
+  el.appendChild(btn);
+
+  el.appendChild(sep());
+  el.appendChild(field('Активная команда', `<select id="activeTeam">${state.teams.map(t=>`<option value="${t.id}" ${state.activeTeamId===t.id?'selected':''}>${t.name}</option>`).join('')}</select>`));
+  document.getElementById('activeTeam').onchange=e=>mutate(()=>{ state.activeTeamId=e.target.value; });
+  const next=mkBtn('Следующая команда','', ()=>mutate(()=>{ state.activeTeamId=nextTeam(); })); next.disabled=state.phase!=='movement'; el.appendChild(next);
+}
+function renderTeams(){
+  const el=document.getElementById('panel-teams'); el.innerHTML='';
+  state.teams.forEach(t=>{
+    const d=document.createElement('div'); d.className='team';
+    d.innerHTML=`
+      <div class="teamHead">
+        <div class="row"><span class="dot" style="background:${t.color}"></span><input class="inp" style="height:34px" data-name="${t.id}" value="${t.name}"></div>
+        <span class="badge">${t.score} очк.</span>
+      </div>
+      <div class="grid2">
+        <div>Позиция: ${t.posKey||'—'}</div><div>База: ${t.baseKey||'—'}</div>
+        <div>Ходы: ${t.movement}</div><div>Жетоны: ${t.supportTokens}</div>
+      </div>
+      <div class="row">
+        <button class="btn" data-support="${t.id}:move" ${t.supportTokens<=0?'disabled':''}>+1 ход</button>
+        <button class="btn" data-support="${t.id}:swamp" ${t.supportTokens<=0?'disabled':''}>Игнор болота</button>
+        <button class="btn" data-support="${t.id}:duel" ${t.supportTokens<=0?'disabled':''}>Защита дуэли</button>
+      </div>`;
+    el.appendChild(d);
+  });
+  el.querySelectorAll('input[data-name]').forEach(i=>i.oninput=e=>mutate(()=>{ const t=byId(e.target.dataset.name); if(t) t.name=e.target.value; }));
+  el.querySelectorAll('button[data-support]').forEach(b=>b.onclick=e=>mutate(()=>{
+    const [teamId,type]=e.target.dataset.support.split(':'); const t=byId(teamId); if(!t || t.supportTokens<=0) return;
+    t.supportTokens-=1; if(type==='move') t.movement+=1; if(type==='swamp') t.activeEffects.ignoreSwampOnce=true; if(type==='duel') t.activeEffects.shield=true;
+    log(`${t.name} использовали жетон поддержки.`);
+  }));
+}
+function renderLog(){
+  const el=document.getElementById('panel-log'); el.innerHTML='';
+  const list=document.createElement('div'); list.className='logList';
+  state.logs.forEach(item=>{ const d=document.createElement('div'); d.className='log'; d.innerHTML=`<div>${item.text}</div><div class="small" style="margin-top:6px">${new Date(item.ts).toLocaleTimeString()}</div>`; list.appendChild(d); });
+  el.appendChild(list);
+}
+function renderView(){
+  const el=document.getElementById('panel-view'); el.innerHTML='';
+  [['showCoords','Показывать координаты'],['showCosts','Показывать стоимость клетки'],['showBonuses','Показывать бонусы'],['vividGrid','Яркая сетка']].forEach(([k,l])=>{
+    const d=document.createElement('div'); d.className='switchbox'; d.style.justifyContent='space-between'; d.innerHTML=`<span>${l}</span><input type="checkbox" ${state.settings[k]?'checked':''} data-view="${k}">`; el.appendChild(d);
+  });
+  el.appendChild(field('Победные очки', `<input class="inp" id="victoryInput" type="number" min="1" max="20" value="${state.settings.victoryScore}">`));
+  el.querySelectorAll('input[data-view]').forEach(i=>i.onchange=e=>mutate(()=>{ state.settings[e.target.dataset.view]=e.target.checked; }));
+  document.getElementById('victoryInput').onchange=e=>mutate(()=>{ state.settings.victoryScore=Math.max(1, Math.min(20, Number(e.target.value||5))); });
+}
+function renderPanels(){ showPanel(state.activeTab); renderEditor(); renderRound(); renderTeams(); renderLog(); renderView(); }
+
+function terrainDecoration(hex, x, y){
+  const color = TERRAIN_META[hex.terrain].accent + '88';
+  if(hex.terrain==='forest') return `<g style="pointer-events:none"><circle cx="${x-3}" cy="${y+2}" r="4" fill="${color}"></circle><circle cx="${x+2}" cy="${y-1}" r="5" fill="${color}"></circle></g>`;
+  if(hex.terrain==='swamp') return `<g style="pointer-events:none"><ellipse cx="${x}" cy="${y}" rx="6" ry="3" fill="${color}"></ellipse></g>`;
+  if(hex.terrain==='mountain') return `<g style="pointer-events:none"><polygon points="${x-6},${y+6} ${x},${y-6} ${x+6},${y+6}" fill="${color}"></polygon></g>`;
+  return `<g style="pointer-events:none"><circle cx="${x}" cy="${y}" r="5" fill="${color}"></circle></g>`;
+}
+function renderMap(){
+  const svg=document.getElementById('mapSvg');
+  const vals=Object.values(state.map.hexes);
+  const size = state.map.shape==='rect' && state.map.cols>20 ? 28 : state.map.shape==='round' && state.map.radius>6 ? 30 : 38;
+  const pts=vals.map(h=>Object.assign({}, h, hexPixel(h.q,h.r,size)));
+  const xs=pts.map(p=>p.x), ys=pts.map(p=>p.y);
+  const minX=Math.min(...xs,0)-80, maxX=Math.max(...xs,0)+80, minY=Math.min(...ys,0)-80, maxY=Math.max(...ys,0)+80;
+  svg.setAttribute('viewBox', `${minX} ${minY} ${maxX-minX} ${maxY-minY}`);
+  const reach=computeReachable(currentTeam());
+  svg.innerHTML = `
+    <defs>
+      <filter id="glow"><feGaussianBlur stdDeviation="3.5" result="blur"></feGaussianBlur><feMerge><feMergeNode in="blur"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge></filter>
+      <filter id="shadow" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="6" stdDeviation="5" flood-color="#020617" flood-opacity="0.45"></feDropShadow></filter>
+      <filter id="tokenGlow" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#ffffff" flood-opacity="0.35"></feDropShadow></filter>
+      ${Object.entries(TERRAIN_META).map(([k,t])=>`<linearGradient id="grad-${k}" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${t.grad1}"></stop><stop offset="100%" stop-color="${t.grad2}"></stop></linearGradient>`).join('')}
+    </defs>`;
+  pts.forEach(hex=>{
+    const k=key(hex.q,hex.r), occ=occupantAt(k) || state.teams.find(t=>t.posKey===k), fogged=state.settings.showFog && hex.fog, editorVisible=state.mode==='host' && state.activeTab==='editor';
+    const isReach=state.mode==='host' && state.activeTab!=='editor' && reach.includes(k);
+    const isRet=!!state.retreatSelection?.options?.includes(k);
+    const stroke=isRet ? '#f43f5e' : isReach ? '#f8fafc' : state.settings.vividGrid ? '#94a3b8' : '#475569';
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.innerHTML = `
+      <polygon points="${hexPoints(hex.x,hex.y+3,size-2)}" fill="#020617" opacity="${fogged?0.12:0.34}" style="pointer-events:none"></polygon>
+      <polygon points="${hexPoints(hex.x,hex.y,size-2)}" fill="url(#grad-${hex.terrain})" opacity="${fogged?0.2:0.98}" stroke="${stroke}" stroke-width="${isRet?4:isReach?3:1.5}" filter="${isRet||isReach?'url(#glow)':'url(#shadow)'}" style="pointer-events:none"></polygon>
+      ${!fogged?`<polygon points="${hexPoints(hex.x,hex.y-1,size-8)}" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.08)" stroke-width="1" style="pointer-events:none"></polygon>`:''}
+      ${!fogged && !hex.special && !occ ? terrainDecoration(hex, hex.x, hex.y) : ''}
+      ${hex.special==='flag' && (!fogged || editorVisible) ? `<g transform="translate(${hex.x-11},${hex.y-18})" filter="url(#tokenGlow)" style="pointer-events:none"><circle cx="11" cy="18" r="13" fill="rgba(250,204,21,0.16)"></circle><path d="M7 28V7m0 0h11l-3 4 3 4H7" stroke="#facc15" stroke-width="2.5" fill="none" stroke-linejoin="round"></path></g>`:''}
+      ${hex.special==='bonus' && state.settings.showBonuses && (!fogged || editorVisible) && hex.bonusType ? `<g transform="translate(${hex.x-11},${hex.y-13})" opacity="${hex.bonusUsed?0.35:1}" filter="url(#tokenGlow)" style="pointer-events:none"><circle cx="11" cy="11" r="12" fill="${BONUS_META[hex.bonusType].color}22"></circle><circle cx="11" cy="11" r="6" fill="${BONUS_META[hex.bonusType].color}"></circle></g>`:''}
+      ${hex.special==='base' && (!fogged || editorVisible) ? `<g filter="url(#tokenGlow)" style="pointer-events:none"><circle cx="${hex.x}" cy="${hex.y}" r="13" fill="rgba(15,23,42,0.65)" stroke="${byId(hex.teamBaseId)?.color || '#fff'}" stroke-width="2.5"></circle><circle cx="${hex.x}" cy="${hex.y}" r="7" fill="${byId(hex.teamBaseId)?.color || '#fff'}" opacity="0.95"></circle></g>`:''}
+      ${occ && (!fogged || editorVisible) ? `<g transform="translate(${hex.x-14},${hex.y-14})" filter="url(#tokenGlow)" style="pointer-events:none"><ellipse cx="14" cy="24" rx="11" ry="4" fill="rgba(15,23,42,0.45)"></ellipse><rect x="3" y="12" width="22" height="9" rx="2.5" fill="${occ.color}" stroke="#f8fafc" stroke-width="1.4"></rect><rect x="9" y="7" width="10" height="7" rx="1.4" fill="${occ.color}" stroke="#f8fafc" stroke-width="1"></rect><line x1="17" y1="10" x2="27" y2="5" stroke="#f8fafc" stroke-width="1.8"></line><circle cx="8" cy="23" r="2" fill="#cbd5e1"></circle><circle cx="20" cy="23" r="2" fill="#cbd5e1"></circle></g>`:''}
+      ${state.settings.showCoords && (!fogged || editorVisible) ? `<text x="${hex.x}" y="${hex.y+18}" text-anchor="middle" font-size="8" fill="#e2e8f0" opacity="0.85" style="pointer-events:none">${k}</text>`:''}
+      ${state.settings.showCosts && (!fogged || editorVisible) && TERRAIN_META[hex.terrain].cost<900 ? `<text x="${hex.x}" y="${hex.y-17}" text-anchor="middle" font-size="9" fill="${TERRAIN_META[hex.terrain].accent}" font-weight="600" style="pointer-events:none">${TERRAIN_META[hex.terrain].cost}</text>`:''}
+      ${isRet && (!fogged || editorVisible) ? `<g style="pointer-events:none"><circle cx="${hex.x}" cy="${hex.y}" r="18" fill="rgba(244,63,94,0.18)"></circle><text x="${hex.x}" y="${hex.y+3}" text-anchor="middle" font-size="10" fill="#fecdd3" font-weight="700">Отступление</text></g>`:''}
+      ${fogged && state.settings.showFog ? `<g style="pointer-events:none"><polygon points="${hexPoints(hex.x,hex.y,size-4)}" fill="rgba(2,6,23,0.78)" stroke="rgba(100,116,139,0.28)" stroke-width="1"></polygon><polygon points="${hexPoints(hex.x,hex.y,size-9)}" fill="rgba(15,23,42,0.45)"></polygon></g>`:''}
+    `;
+    const hit=document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    hit.setAttribute('points', hexPoints(hex.x,hex.y,size-1));
+    hit.setAttribute('fill','rgba(255,255,255,0.001)');
+    hit.setAttribute('stroke','rgba(255,255,255,0.001)');
+    hit.setAttribute('stroke-width','12');
+    hit.style.pointerEvents='all';
+    hit.addEventListener('pointerdown', e=>{ e.preventDefault(); e.stopPropagation(); handleMapClick(k); });
+    g.appendChild(hit);
+    svg.appendChild(g);
+  });
+}
+function openDuel(){
+  const wrap=document.getElementById('duelButtons'); wrap.innerHTML='';
+  const a=byId(state.duel.attackerId), d=byId(state.duel.defenderId);
+  [a,d].forEach(t=>{ const b=mkBtn(t.name,'',()=>resolveDuel(t.id)); b.style.background=t.color; b.style.borderColor=t.color; wrap.appendChild(b); });
+  document.getElementById('duelModal').classList.add('open');
+}
+function refreshWinner(){
+  const modal=document.getElementById('winnerModal');
+  if(!state.winner){ modal.classList.remove('open'); return; }
+  const t=byId(state.winner.teamId); document.getElementById('winnerText').innerHTML=`<div style="font-size:34px;font-weight:700;color:${t?.color||'#fff'}">${t?.name||''}</div><div class="small" style="margin-top:8px">${state.winner.reason}</div>`; modal.classList.add('open');
+}
+function sep(){ const d=document.createElement('div'); d.className='sep'; return d; }
+
+function render(){
+  renderLayout();
+  renderTop();
+  renderTabs();
+  renderPanels();
+  renderMap();
+  refreshWinner();
+}
+document.getElementById('modeBtn').onclick=()=>mutate(()=>{ state.mode=state.mode==='host'?'viewer':'host'; });
+document.getElementById('undoBtn').onclick=undo;
+document.getElementById('resetBtn').onclick=()=>{ state=createDemoState(); render(); };
+document.getElementById('fogToggle').onchange=e=>requestToggleFog(e.target.checked);
+
+render();
+</script>
+</body>
+</html>
