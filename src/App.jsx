@@ -12,21 +12,49 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { Flag, Undo2, RotateCcw, Eye, EyeOff, Upload, Download, PlusCircle, Swords, Trophy, ScanSearch, Shield, Zap, Mountain, Trees, Waves, Hexagon, Play, Settings, Users, ScrollText, Map as MapIcon } from 'lucide-react';
+import {
+  Flag,
+  Undo2,
+  RotateCcw,
+  Eye,
+  EyeOff,
+  Upload,
+  Download,
+  PlusCircle,
+  Swords,
+  Trophy,
+  ScanSearch,
+  Shield,
+  Zap,
+  Mountain,
+  Trees,
+  Waves,
+  Hexagon,
+  Play,
+  Settings,
+  Users,
+  ScrollText,
+  Map as MapIcon,
+  Shuffle,
+  Crown,
+  Radar,
+  Sparkles,
+} from 'lucide-react';
 
-const TEAM_PRESETS = [
-  { id: 'red', name: 'Красные', color: '#ef4444' },
-  { id: 'blue', name: 'Синие', color: '#3b82f6' },
-  { id: 'green', name: 'Зелёные', color: '#22c55e' },
-  { id: 'yellow', name: 'Жёлтые', color: '#eab308' },
-  { id: 'purple', name: 'Фиолетовые', color: '#a855f7' },
-  { id: 'orange', name: 'Оранжевые', color: '#f97316' },
+const TEAM_COLOR_POOL = [
+  '#ef4444', '#3b82f6', '#22c55e', '#eab308', '#a855f7', '#f97316', '#ec4899', '#14b8a6', '#84cc16', '#8b5cf6',
+  '#06b6d4', '#f59e0b', '#10b981', '#f43f5e', '#6366f1', '#d946ef', '#0ea5e9', '#65a30d', '#fb7185', '#94a3b8',
+];
+
+const TEAM_NAME_POOL = [
+  'Красные', 'Синие', 'Зелёные', 'Жёлтые', 'Фиолетовые', 'Оранжевые', 'Розовые', 'Бирюзовые', 'Лаймовые', 'Индиго',
+  'Лазурные', 'Янтарные', 'Изумрудные', 'Алые', 'Кобальтовые', 'Неоновые', 'Небесные', 'Оливковые', 'Коралловые', 'Стальные',
 ];
 
 const TERRAIN_META = {
   plain: { label: 'Равнина', cost: 1, fill: '#1f7a4f', stroke: '#14532d', icon: Hexagon },
-  forest: { label: 'Лес', cost: 1, fill: '#14532d', stroke: '#052e16', icon: Trees },
-  swamp: { label: 'Болото', cost: 2, fill: '#3f6212', stroke: '#365314', icon: Waves },
+  forest: { label: 'Лес', cost: 2, fill: '#14532d', stroke: '#052e16', icon: Trees },
+  swamp: { label: 'Болото', cost: 3, fill: '#3f6212', stroke: '#365314', icon: Waves },
   mountain: { label: 'Горы', cost: Infinity, fill: '#475569', stroke: '#1e293b', icon: Mountain },
 };
 
@@ -35,9 +63,10 @@ const BONUS_META = {
   scanner: { label: 'Сканер', icon: ScanSearch, color: '#06b6d4' },
   boost: { label: 'Форсаж', icon: PlusCircle, color: '#8b5cf6' },
   shield: { label: 'Щит', icon: Shield, color: '#10b981' },
+  surprise: { label: 'Сюрприз', icon: Shuffle, color: '#fb7185' },
 };
 
-const VIEW_STORAGE_KEY = 'hex-tournament-map-state-v2';
+const VIEW_STORAGE_KEY = 'hex-tournament-map-state-v3';
 
 function safeRandomId() {
   try {
@@ -198,16 +227,27 @@ function createRoundMap(radius = 4) {
   return { shape: 'round', cols: 0, rows: 0, radius, hexes };
 }
 
-function createInitialTeams(count = 4) {
-  return TEAM_PRESETS.slice(0, count).map((t) => ({
-    ...t,
+function createInitialTeams(count = 6) {
+  return Array.from({ length: Math.max(2, Math.min(20, count)) }, (_, index) => ({
+    id: `team-${index + 1}`,
+    name: TEAM_NAME_POOL[index] || `Команда ${index + 1}`,
+    color: TEAM_COLOR_POOL[index % TEAM_COLOR_POOL.length],
     posKey: null,
     baseKey: null,
     movement: 0,
     score: 0,
     supportTokens: 0,
-    activeEffects: { boost: false, shield: false, ignoreSwampOnce: false, duelRetry: false },
+    activeEffects: {
+      boost: false,
+      shield: false,
+      ignoreSwampOnce: false,
+      duelRetry: false,
+    },
   }));
+}
+
+function getTeamsMissingBases(teams) {
+  return teams.filter((team) => !team.baseKey);
 }
 
 function revealAround(map, centerKey, radius = 1) {
@@ -228,7 +268,7 @@ function applyDemoStyling(state) {
     if ((hex.q + hex.r) % 7 === 0) hex.terrain = 'forest';
     if ((hex.q * 3 + hex.r) % 11 === 0) hex.terrain = 'swamp';
     if ((hex.q * 5 + hex.r) % 13 === 0) hex.terrain = 'mountain';
-    if (index % 19 === 0 && hex.terrain !== 'mountain') {
+    if (index % 17 === 0 && hex.terrain !== 'mountain') {
       hex.special = 'bonus';
       const types = Object.keys(BONUS_META);
       hex.bonusType = types[index % types.length];
@@ -237,8 +277,8 @@ function applyDemoStyling(state) {
 }
 
 function createDemoState() {
-  const map = createRectMap(8, 7);
-  const teams = createInitialTeams(4);
+  const map = createRectMap(9, 7);
+  const teams = createInitialTeams(6);
   const state = {
     mode: 'host',
     activeTab: 'editor',
@@ -258,7 +298,7 @@ function createDemoState() {
       revealBonusesThroughFog: false,
       revealFlagThroughFog: false,
       vividGrid: true,
-      victoryScore: 5,
+      victoryScore: 15,
     },
     editor: {
       tool: 'terrain',
@@ -266,10 +306,12 @@ function createDemoState() {
       bonusType: 'energy',
       teamForBase: teams[0].id,
       roundRadius: 4,
-      rectCols: 8,
+      rectCols: 9,
       rectRows: 7,
+      teamCount: 6,
     },
     duel: null,
+    duelRetryPrompt: null,
     retreatSelection: null,
     importText: '',
     moveHighlights: [],
@@ -282,19 +324,24 @@ function createDemoState() {
     .filter((hex) => hex.terrain !== 'mountain')
     .sort((a, b) => (a.r - b.r) || (a.q - b.q));
 
-  const baseKeys = [
-    axialKey(assignable[0].q, assignable[0].r),
-    axialKey(assignable[4].q, assignable[4].r),
-    axialKey(assignable[assignable.length - 5].q, assignable[assignable.length - 5].r),
-    axialKey(assignable[assignable.length - 1].q, assignable[assignable.length - 1].r),
+  const demoBases = [
+    assignable[0],
+    assignable[3],
+    assignable[8],
+    assignable[assignable.length - 9],
+    assignable[assignable.length - 4],
+    assignable[assignable.length - 1],
   ];
 
   teams.forEach((team, i) => {
-    team.baseKey = baseKeys[i];
-    team.posKey = baseKeys[i];
-    map.hexes[baseKeys[i]].special = 'base';
-    map.hexes[baseKeys[i]].teamBaseId = team.id;
-    revealAround(map, baseKeys[i], 1);
+    const baseHex = demoBases[i];
+    if (!baseHex) return;
+    const baseKey = axialKey(baseHex.q, baseHex.r);
+    team.baseKey = baseKey;
+    team.posKey = baseKey;
+    map.hexes[baseKey].special = 'base';
+    map.hexes[baseKey].teamBaseId = team.id;
+    revealAround(map, baseKey, 1);
   });
 
   const flagHex = assignable[Math.floor(assignable.length / 2)];
@@ -303,7 +350,7 @@ function createDemoState() {
   map.hexes[flagKey].bonusType = null;
   revealAround(map, flagKey, 0);
 
-  state.logs.push({ id: safeRandomId(), text: 'Демо-карта готова. Можно сразу проводить раунд.', ts: Date.now() });
+  state.logs.unshift({ id: safeRandomId(), text: 'Демо-карта готова. Можно сразу проводить раунд.', ts: Date.now() });
   return state;
 }
 
@@ -319,6 +366,20 @@ function getOccupant(teams, key, exceptTeamId = null) {
   return teams.find((t) => t.posKey === key && t.id !== exceptTeamId) || null;
 }
 
+function getDistanceToFlag(team, map, flagKey) {
+  if (!team?.posKey || !flagKey) return null;
+  return mapDistance(map, parseKey(team.posKey), parseKey(flagKey));
+}
+
+function getActiveEffectsSummary(team) {
+  const items = [];
+  if (team.activeEffects.shield) items.push('Щит');
+  if (team.activeEffects.boost) items.push('Форсаж');
+  if (team.activeEffects.ignoreSwampOnce) items.push('Болото x1');
+  if (team.activeEffects.duelRetry) items.push('Повтор дуэли');
+  return items;
+}
+
 function computeReachableKeys(state, team) {
   if (!team?.posKey || team.movement <= 0) return [];
   const queue = [{ key: team.posKey, remaining: team.movement }];
@@ -331,10 +392,11 @@ function computeReachableKeys(state, team) {
     for (const n of neighborsForMap(state.map, q, r)) {
       const nKey = axialKey(n.q, n.r);
       const hex = state.map.hexes[nKey];
-      if (!hex) continue;
-      if (hex.terrain === 'mountain') continue;
+      if (!hex || hex.terrain === 'mountain') continue;
       const occupied = getOccupant(state.teams, nKey, team.id);
-      const terrainCost = hex.terrain === 'swamp' && (team.activeEffects.boost || team.activeEffects.ignoreSwampOnce) ? 1 : TERRAIN_META[hex.terrain].cost;
+      const terrainCost = hex.terrain === 'swamp' && (team.activeEffects.boost || team.activeEffects.ignoreSwampOnce)
+        ? 1
+        : TERRAIN_META[hex.terrain].cost;
       const nextRemaining = current.remaining - terrainCost;
       if (nextRemaining < 0) continue;
       if (occupied && occupied.id !== team.id) {
@@ -361,25 +423,127 @@ function smallLog(text) {
   return { id: safeRandomId(), text, ts: Date.now() };
 }
 
+function normalizeLoadedState(loaded) {
+  const teamCount = Math.max(2, Math.min(20, loaded?.editor?.teamCount || loaded?.teams?.length || 6));
+  return {
+    ...loaded,
+    teams: loaded.teams || createInitialTeams(teamCount),
+    winner: loaded.winner || null,
+    duel: loaded.duel || null,
+    duelRetryPrompt: loaded.duelRetryPrompt || null,
+    retreatSelection: loaded.retreatSelection || null,
+    logs: loaded.logs || [],
+    moveHighlights: loaded.moveHighlights || [],
+    history: loaded.history || [],
+    settings: {
+      showCoords: true,
+      showCosts: false,
+      showFog: true,
+      showBonuses: true,
+      showFlag: true,
+      revealBonusesThroughFog: false,
+      revealFlagThroughFog: false,
+      vividGrid: true,
+      victoryScore: 15,
+      ...(loaded.settings || {}),
+    },
+    editor: {
+      tool: 'terrain',
+      terrainType: 'plain',
+      bonusType: 'energy',
+      teamForBase: loaded?.editor?.teamForBase || loaded?.teams?.[0]?.id || 'team-1',
+      roundRadius: 4,
+      rectCols: 8,
+      rectRows: 7,
+      teamCount,
+      ...(loaded.editor || {}),
+    },
+  };
+}
+
+function getSurpriseDestination(draft, teamId, fromKey) {
+  const team = getTeamById(draft.teams, teamId);
+  if (!team || !fromKey) return null;
+  const from = parseKey(fromKey);
+  const allCandidates = Object.values(draft.map.hexes)
+    .filter((hex) => hex.terrain !== 'mountain')
+    .filter((hex) => {
+      const key = axialKey(hex.q, hex.r);
+      if (key === fromKey) return false;
+      const occupant = getOccupant(draft.teams, key, teamId);
+      return !occupant;
+    });
+
+  const preferred = allCandidates.filter((hex) => mapDistance(draft.map, from, hex) === 3);
+  const fallback = allCandidates.filter((hex) => mapDistance(draft.map, from, hex) > 0 && mapDistance(draft.map, from, hex) <= 3);
+  const pool = preferred.length ? preferred : fallback;
+  if (!pool.length) return null;
+  const chosen = pool[Math.floor(Math.random() * pool.length)];
+  return axialKey(chosen.q, chosen.r);
+}
+
+function finalizeDuelResolution(draft, duel, winnerId) {
+  const attacker = getTeamById(draft.teams, duel.attackerId);
+  const defender = getTeamById(draft.teams, duel.defenderId);
+  if (!attacker || !defender) return;
+
+  const loser = winnerId === attacker.id ? defender : attacker;
+  const winner = winnerId === attacker.id ? attacker : defender;
+  const winnerOnContested = winner.id === attacker.id;
+
+  if (winnerOnContested) {
+    winner.posKey = duel.contestedKey;
+    const contestedHex = draft.map.hexes[duel.contestedKey];
+    const cost = contestedHex.terrain === 'swamp' && (winner.activeEffects.boost || winner.activeEffects.ignoreSwampOnce)
+      ? 1
+      : TERRAIN_META[contestedHex.terrain].cost;
+    winner.movement = Math.max(0, winner.movement - cost);
+  }
+
+  const retreatOptions = getRetreatOptions(draft, duel.contestedKey, loser.id, winner.id);
+  if (retreatOptions.length > 0) {
+    draft.retreatSelection = {
+      loserId: loser.id,
+      winnerId: winner.id,
+      contestedKey: duel.contestedKey,
+      options: retreatOptions,
+    };
+    draft.logs.unshift(smallLog(`${loser.name} проиграли дуэль. Победитель выбирает гекс для отступления.`));
+  } else {
+    loser.posKey = loser.baseKey;
+    draft.logs.unshift(smallLog(`${loser.name} проиграли дуэль и были отправлены на базу.`));
+  }
+
+  winner.score += 1;
+  revealAround(draft.map, winner.posKey, 1);
+  draft.logs.unshift(smallLog(`Победитель дуэли: ${winner.name}.`));
+
+  if (winner.score >= draft.settings.victoryScore) {
+    draft.winner = { teamId: winner.id, reason: 'Победа по очкам' };
+  }
+  if (winner.posKey === getFlagKey(draft.map) && !draft.winner) {
+    draft.winner = { teamId: winner.id, reason: 'Флаг захвачен' };
+  }
+  draft.duel = null;
+}
+
+function getRetreatOptions(draft, contestedKey, loserId, winnerId) {
+  const center = parseKey(contestedKey);
+  return neighborsForMap(draft.map, center.q, center.r)
+    .map((n) => axialKey(n.q, n.r))
+    .filter((nKey) => {
+      const hex = draft.map.hexes[nKey];
+      if (!hex || hex.terrain === 'mountain') return false;
+      const occupant = getOccupant(draft.teams, nKey, loserId);
+      if (occupant && occupant.id !== winnerId) return false;
+      return nKey !== contestedKey;
+    });
+}
+
 export default function HexTournamentMapApp() {
   const [state, setState] = useState(() => {
     const loaded = safeLoadState();
-    if (!loaded) return createDemoState();
-    return {
-      ...loaded,
-      settings: {
-        showCoords: true,
-        showCosts: false,
-        showFog: true,
-        showBonuses: true,
-        showFlag: true,
-        revealBonusesThroughFog: false,
-        revealFlagThroughFog: false,
-        vividGrid: true,
-        victoryScore: 5,
-        ...(loaded.settings || {}),
-      },
-    };
+    return loaded ? normalizeLoadedState(loaded) : createDemoState();
   });
 
   const fileInputRef = useRef(null);
@@ -389,6 +553,20 @@ export default function HexTournamentMapApp() {
   }, [state]);
 
   const currentTeam = useMemo(() => getTeamById(state.teams, state.activeTeamId), [state.teams, state.activeTeamId]);
+  const flagKey = useMemo(() => getFlagKey(state.map), [state.map]);
+  const reachable = useMemo(() => (currentTeam ? computeReachableKeys(state, currentTeam) : []), [state, currentTeam]);
+  const missingBaseTeams = useMemo(() => getTeamsMissingBases(state.teams), [state.teams]);
+  const activeLeader = useMemo(() => {
+    if (!flagKey) return state.teams[0] ?? null;
+    return [...state.teams]
+      .filter((t) => t.posKey)
+      .sort((a, b) => {
+        const ad = getDistanceToFlag(a, state.map, flagKey) ?? Number.POSITIVE_INFINITY;
+        const bd = getDistanceToFlag(b, state.map, flagKey) ?? Number.POSITIVE_INFINITY;
+        return ad - bd || b.score - a.score;
+      })[0] || null;
+  }, [state.teams, state.map, flagKey]);
+
   const phaseMeta = {
     setup: {
       title: 'Настройка карты',
@@ -407,8 +585,6 @@ export default function HexTournamentMapApp() {
     },
   };
   const currentPhase = phaseMeta[state.phase] || phaseMeta.setup;
-  const flagKey = useMemo(() => getFlagKey(state.map), [state.map]);
-  const reachable = useMemo(() => (currentTeam ? computeReachableKeys(state, currentTeam) : []), [state, currentTeam]);
 
   useEffect(() => {
     setState((prev) => ({ ...prev, moveHighlights: reachable }));
@@ -424,7 +600,7 @@ export default function HexTournamentMapApp() {
           ...prev,
           phase: 'scoring',
           activeTab: 'round',
-          logs: [smallLog('У всех команд закончились ходы. Начислите новые ходы после следующей битвы.'), ...prev.logs],
+          logs: [smallLog('У всех команд закончились ходы. Начислите новые ходы после следующей активности.'), ...prev.logs],
         };
       });
     }
@@ -444,11 +620,12 @@ export default function HexTournamentMapApp() {
       settings: draft.settings,
       editor: draft.editor,
       duel: draft.duel,
+      duelRetryPrompt: draft.duelRetryPrompt,
       retreatSelection: draft.retreatSelection,
       importText: draft.importText,
       moveHighlights: draft.moveHighlights,
     });
-    draft.history = [...(draft.history || []), snapshot].slice(-30);
+    draft.history = [...(draft.history || []), snapshot].slice(-40);
   };
 
   const mutateState = (fn) => {
@@ -471,33 +648,44 @@ export default function HexTournamentMapApp() {
   const checkComeback = (draft) => {
     const fKey = getFlagKey(draft.map);
     if (!fKey) return;
-    const leaderDistance = Math.min(...draft.teams.filter((t) => t.posKey).map((t) => mapDistance(draft.map, parseKey(t.posKey), parseKey(fKey))));
+    const distances = draft.teams
+      .filter((team) => team.posKey)
+      .map((team) => getDistanceToFlag(team, draft.map, fKey))
+      .filter((v) => Number.isFinite(v));
+    if (!distances.length) return;
+    const leaderDistance = Math.min(...distances);
     draft.teams.forEach((team) => {
       if (!team.posKey) return;
-      const dist = mapDistance(draft.map, parseKey(team.posKey), parseKey(fKey));
-      if (dist - leaderDistance >= 4) {
+      const dist = getDistanceToFlag(team, draft.map, fKey);
+      if (dist !== null && dist - leaderDistance >= 4) {
         team.supportTokens += 1;
         addLog(draft, `${team.name} получили жетон поддержки за отставание.`);
       }
     });
   };
 
+  const rebuildMapWithCurrentShape = (draft, shape = draft.map.shape) => {
+    const count = Math.max(2, Math.min(20, Number(draft.editor?.teamCount || draft.teams.length || 6)));
+    draft.map = shape === 'rect'
+      ? createRectMap(draft.editor?.rectCols || 8, draft.editor?.rectRows || 7)
+      : createRoundMap(draft.editor?.roundRadius || 4);
+    draft.teams = createInitialTeams(count);
+    draft.editor.teamCount = count;
+    draft.editor.teamForBase = draft.teams[0]?.id || 'team-1';
+    draft.activeTeamId = draft.teams[0]?.id || null;
+    draft.phase = 'setup';
+    draft.currentRound = 1;
+    draft.winner = null;
+    draft.duel = null;
+    draft.duelRetryPrompt = null;
+    draft.retreatSelection = null;
+    draft.settings.showFog = true;
+    draft.logs = [smallLog(`Создана новая ${shape === 'rect' ? 'прямоугольная' : 'круглая'} карта на ${count} команд.`)];
+  };
+
   const createNewMap = () => {
     mutateState((draft) => {
-      const count = draft.teams.length;
-      const nextMap = draft.map.shape === 'rect'
-        ? createRectMap(draft.editor?.rectCols || 8, draft.editor?.rectRows || 7)
-        : createRoundMap(draft.editor?.roundRadius || 4);
-      draft.map = nextMap;
-      draft.teams = createInitialTeams(count);
-      draft.currentRound = 1;
-      draft.activeTeamId = draft.teams[0].id;
-      draft.phase = 'setup';
-      draft.winner = null;
-      draft.logs = [smallLog('Создана новая пустая карта.')];
-      draft.duel = null;
-      draft.retreatSelection = null;
-      draft.settings.showFog = true;
+      rebuildMapWithCurrentShape(draft, draft.map.shape);
     });
   };
 
@@ -512,20 +700,6 @@ export default function HexTournamentMapApp() {
     });
   };
 
-  const getRetreatOptions = (draft, contestedKey, loserId, winnerId) => {
-    const center = parseKey(contestedKey);
-    return neighborsForMap(draft.map, center.q, center.r)
-      .map((n) => axialKey(n.q, n.r))
-      .filter((nKey) => {
-        const hex = draft.map.hexes[nKey];
-        if (!hex) return false;
-        if (hex.terrain === 'mountain') return false;
-        const occupant = getOccupant(draft.teams, nKey, loserId);
-        if (occupant && occupant.id !== winnerId) return false;
-        return nKey !== contestedKey;
-      });
-  };
-
   const handleMapHexClick = (key) => {
     if (state.mode === 'host' && state.activeTab === 'editor') {
       mutateState((draft) => {
@@ -537,29 +711,40 @@ export default function HexTournamentMapApp() {
             hex.special = null;
             hex.bonusType = null;
             hex.bonusUsed = false;
+            if (hex.teamBaseId) {
+              const baseOwner = getTeamById(draft.teams, hex.teamBaseId);
+              if (baseOwner) {
+                baseOwner.baseKey = null;
+                if (baseOwner.posKey === key) baseOwner.posKey = null;
+              }
+              hex.teamBaseId = null;
+            }
           }
           addLog(draft, `Гекс ${key} изменён: ${TERRAIN_META[draft.editor.terrainType].label}.`);
         }
-        if (draft.editor.tool === 'bonus') {
-          if (hex.terrain !== 'mountain') {
-            hex.special = 'bonus';
-            hex.bonusType = draft.editor.bonusType;
-            hex.bonusUsed = false;
-            addLog(draft, `На гексе ${key} установлен бонус: ${BONUS_META[draft.editor.bonusType].label}.`);
-          }
+        if (draft.editor.tool === 'bonus' && hex.terrain !== 'mountain') {
+          hex.special = 'bonus';
+          hex.bonusType = draft.editor.bonusType;
+          hex.bonusUsed = false;
+          hex.teamBaseId = null;
+          addLog(draft, `На гексе ${key} установлен бонус: ${BONUS_META[draft.editor.bonusType].label}.`);
         }
-        if (draft.editor.tool === 'flag') {
+        if (draft.editor.tool === 'flag' && hex.terrain !== 'mountain') {
           Object.values(draft.map.hexes).forEach((h) => { if (h.special === 'flag') h.special = null; });
-          if (hex.terrain !== 'mountain') {
-            hex.special = 'flag';
-            hex.bonusType = null;
-            addLog(draft, `Флаг перенесён на ${key}.`);
-          }
+          hex.special = 'flag';
+          hex.bonusType = null;
+          hex.teamBaseId = null;
+          addLog(draft, `Флаг перенесён на ${key}.`);
         }
-        if (draft.editor.tool === 'base') {
+        if (draft.editor.tool === 'base' && hex.terrain !== 'mountain') {
           const team = getTeamById(draft.teams, draft.editor.teamForBase);
-          if (team && hex.terrain !== 'mountain') {
-            Object.values(draft.map.hexes).forEach((h) => { if (h.teamBaseId === team.id) { h.teamBaseId = null; if (h.special === 'base') h.special = null; } });
+          if (team) {
+            Object.values(draft.map.hexes).forEach((h) => {
+              if (h.teamBaseId === team.id) {
+                h.teamBaseId = null;
+                if (h.special === 'base') h.special = null;
+              }
+            });
             hex.special = 'base';
             hex.teamBaseId = team.id;
             team.baseKey = key;
@@ -569,14 +754,16 @@ export default function HexTournamentMapApp() {
           }
         }
         if (draft.editor.tool === 'clear') {
+          if (hex.teamBaseId) {
+            const baseTeam = getTeamById(draft.teams, hex.teamBaseId);
+            if (baseTeam) {
+              baseTeam.baseKey = null;
+              if (baseTeam.posKey === key) baseTeam.posKey = null;
+            }
+          }
           hex.special = null;
           hex.bonusType = null;
           hex.bonusUsed = false;
-          const baseTeam = draft.teams.find((t) => t.baseKey === key);
-          if (baseTeam) {
-            baseTeam.baseKey = null;
-            if (baseTeam.posKey === key) baseTeam.posKey = null;
-          }
           hex.teamBaseId = null;
           addLog(draft, `С гекса ${key} удалены специальные свойства.`);
         }
@@ -610,19 +797,31 @@ export default function HexTournamentMapApp() {
           addLog(draft, `Недопустимый ход ${team.name}: можно идти только на соседний гекс.`);
           return;
         }
+
         const occupant = getOccupant(draft.teams, key, team.id);
-        const effectiveSwampCost = destination.terrain === 'swamp' && (team.activeEffects.boost || team.activeEffects.ignoreSwampOnce) ? 1 : TERRAIN_META[destination.terrain].cost;
-        if (destination.terrain === 'mountain' || effectiveSwampCost > team.movement) {
+        const effectiveCost = destination.terrain === 'swamp' && (team.activeEffects.boost || team.activeEffects.ignoreSwampOnce)
+          ? 1
+          : TERRAIN_META[destination.terrain].cost;
+
+        if (destination.terrain === 'mountain' || effectiveCost > team.movement) {
           addLog(draft, `Недопустимый ход ${team.name}: не хватает очков хода или препятствие.`);
           return;
         }
+
         if (occupant) {
-          draft.duel = { attackerId: team.id, defenderId: occupant.id, contestedKey: key, attackerFrom: startKey };
+          draft.duel = {
+            attackerId: team.id,
+            defenderId: occupant.id,
+            contestedKey: key,
+            attackerFrom: startKey,
+            retryCount: 0,
+          };
           addLog(draft, `Дуэль! ${team.name} атакуют ${occupant.name} на ${key}.`);
           return;
         }
+
         team.posKey = key;
-        team.movement -= effectiveSwampCost;
+        team.movement -= effectiveCost;
         if (destination.terrain === 'swamp' && team.activeEffects.ignoreSwampOnce) team.activeEffects.ignoreSwampOnce = false;
         if (destination.terrain === 'swamp' && team.activeEffects.boost) team.activeEffects.boost = false;
         revealAround(draft.map, key, 1);
@@ -631,17 +830,33 @@ export default function HexTournamentMapApp() {
         if (destination.special === 'bonus' && !destination.bonusUsed && destination.bonusType) {
           destination.bonusUsed = true;
           team.score += 1;
-          if (destination.bonusType === 'energy') team.movement += 1;
-          if (destination.bonusType === 'scanner') revealAround(draft.map, key, 2);
+          if (destination.bonusType === 'energy') {
+            team.movement += 1;
+          }
+          if (destination.bonusType === 'scanner') {
+            revealAround(draft.map, key, 2);
+          }
           if (destination.bonusType === 'boost') {
             team.activeEffects.boost = true;
             team.activeEffects.ignoreSwampOnce = true;
           }
-          if (destination.bonusType === 'shield') team.activeEffects.shield = true;
+          if (destination.bonusType === 'shield') {
+            team.activeEffects.shield = true;
+          }
+          if (destination.bonusType === 'surprise') {
+            const surpriseTarget = getSurpriseDestination(draft, team.id, key);
+            if (surpriseTarget) {
+              team.posKey = surpriseTarget;
+              revealAround(draft.map, surpriseTarget, 1);
+              addLog(draft, `${team.name} активировали сюрприз и телепортировались на ${surpriseTarget}.`);
+            } else {
+              addLog(draft, `${team.name} активировали сюрприз, но подходящего гекса не нашлось.`);
+            }
+          }
           addLog(draft, `${team.name} активировали бонус: ${BONUS_META[destination.bonusType].label}.`);
         }
 
-        if (destination.special === 'flag') {
+        if (team.posKey === getFlagKey(draft.map)) {
           draft.winner = { teamId: team.id, reason: 'Флаг захвачен' };
           addLog(draft, `${team.name} захватили флаг и победили!`);
         }
@@ -662,57 +877,71 @@ export default function HexTournamentMapApp() {
       if (!attacker || !defender) return;
 
       const loser = winnerId === attacker.id ? defender : attacker;
-      const winner = winnerId === attacker.id ? attacker : defender;
-      const winnerOnContested = winner.id === attacker.id;
-
-      if (winnerOnContested) {
-        winner.posKey = duel.contestedKey;
-        const contestedHex = draft.map.hexes[duel.contestedKey];
-        const cost = contestedHex.terrain === 'swamp' && (winner.activeEffects.boost || winner.activeEffects.ignoreSwampOnce) ? 1 : TERRAIN_META[contestedHex.terrain].cost;
-        winner.movement = Math.max(0, winner.movement - cost);
+      if (loser.activeEffects.duelRetry) {
+        draft.duelRetryPrompt = {
+          duel,
+          provisionalWinnerId: winnerId,
+        };
+        draft.duel = null;
+        addLog(draft, `${loser.name} могут потратить эффект «Повтор дуэли» и потребовать переигровку.`);
+        return;
       }
 
-      if (loser.activeEffects.shield) {
-        loser.activeEffects.shield = false;
-        loser.posKey = loser.id === attacker.id ? duel.attackerFrom : loser.posKey;
-        addLog(draft, `${loser.name} потратили щит и удержали безопасную позицию.`);
-      } else {
-        const retreatOptions = getRetreatOptions(draft, duel.contestedKey, loser.id, winner.id);
-        if (retreatOptions.length > 0) {
-          draft.retreatSelection = {
-            loserId: loser.id,
-            winnerId: winner.id,
-            contestedKey: duel.contestedKey,
-            options: retreatOptions,
-          };
-          addLog(draft, `${loser.name} проиграли дуэль. Победитель выбирает соседний гекс для отступления.`);
-        } else {
-          loser.posKey = loser.baseKey;
-          addLog(draft, `${loser.name} проиграли дуэль и были отправлены на базу, так как рядом не было свободных гексов.`);
-        }
-      }
+      finalizeDuelResolution(draft, duel, winnerId);
+    });
+  };
 
-      winner.score += 1;
-      revealAround(draft.map, winner.posKey, 1);
-      addLog(draft, `Победитель дуэли: ${winner.name}.`);
-      if (winner.score >= draft.settings.victoryScore) {
-        draft.winner = { teamId: winner.id, reason: 'Победа по очкам' };
-        addLog(draft, `${winner.name} победили по очкам.`);
-      }
-      if (winner.posKey === getFlagKey(draft.map) && !draft.winner) {
-        draft.winner = { teamId: winner.id, reason: 'Флаг захвачен' };
-      }
+  const useShieldToHold = () => {
+    mutateState((draft) => {
+      const duel = draft.duel;
+      if (!duel) return;
+      const defender = getTeamById(draft.teams, duel.defenderId);
+      if (!defender?.activeEffects.shield) return;
+      defender.activeEffects.shield = false;
       draft.duel = null;
+      addLog(draft, `${defender.name} потратили щит и сохранили позицию. Дуэль отменена.`);
+    });
+  };
+
+  const retryDuel = () => {
+    mutateState((draft) => {
+      const prompt = draft.duelRetryPrompt;
+      if (!prompt) return;
+      const duel = prompt.duel;
+      const provisionalWinner = getTeamById(draft.teams, prompt.provisionalWinnerId);
+      const loserId = duel.attackerId === prompt.provisionalWinnerId ? duel.defenderId : duel.attackerId;
+      const loser = getTeamById(draft.teams, loserId);
+      if (!loser?.activeEffects.duelRetry) {
+        finalizeDuelResolution(draft, duel, prompt.provisionalWinnerId);
+        draft.duelRetryPrompt = null;
+        return;
+      }
+      loser.activeEffects.duelRetry = false;
+      draft.duel = {
+        ...duel,
+        retryCount: (duel.retryCount || 0) + 1,
+      };
+      draft.duelRetryPrompt = null;
+      addLog(draft, `${loser.name} потребовали повторную дуэль против ${provisionalWinner?.name || 'соперника'}.`);
+    });
+  };
+
+  const acceptDuelResult = () => {
+    mutateState((draft) => {
+      const prompt = draft.duelRetryPrompt;
+      if (!prompt) return;
+      finalizeDuelResolution(draft, prompt.duel, prompt.provisionalWinnerId);
+      draft.duelRetryPrompt = null;
     });
   };
 
   const assignMovementByPlacements = (placements) => {
     mutateState((draft) => {
       draft.teams.forEach((team) => {
-        const place = placements[team.id];
+        const place = Number(placements[team.id]);
         if (place === 1) team.movement = 3;
         else if (place === 2) team.movement = 2;
-        else if (place === 3 || place === 4) team.movement = 1;
+        else if (place >= 3) team.movement = 1;
         else team.movement = 0;
       });
       addLog(draft, 'Очки движения начислены по местам в активности.');
@@ -737,14 +966,16 @@ export default function HexTournamentMapApp() {
   };
 
   const startTournament = () => {
+    if (missingBaseTeams.length > 0) {
+      confirmAction(`Нельзя начать турнир: расставьте базы для команд: ${missingBaseTeams.map((t) => t.name).join(', ')}`);
+      return;
+    }
     mutateState((draft) => {
       draft.settings.showFog = true;
       draft.phase = 'scoring';
       draft.activeTab = 'round';
-      draft.teams.forEach((team) => {
-        team.movement = 0;
-      });
-      addLog(draft, 'Турнир начался. Туман войны включён по умолчанию. Ожидается начисление ходов после первой битвы.');
+      draft.teams.forEach((team) => { team.movement = 0; });
+      addLog(draft, 'Турнир начался. Туман войны включён. Ожидается начисление ходов после первой активности.');
     });
   };
 
@@ -756,6 +987,16 @@ export default function HexTournamentMapApp() {
     });
   };
 
+  const endRound = () => {
+    mutateState((draft) => {
+      draft.currentRound += 1;
+      resetRoundMovement(draft);
+      draft.phase = 'scoring';
+      draft.activeTab = 'round';
+      addLog(draft, `Раунд завершён. Начат раунд ${draft.currentRound}.`);
+    });
+  };
+
   const spendSupport = (teamId, type) => {
     mutateState((draft) => {
       const team = getTeamById(draft.teams, teamId);
@@ -763,8 +1004,8 @@ export default function HexTournamentMapApp() {
       team.supportTokens -= 1;
       if (type === 'move') team.movement += 1;
       if (type === 'swamp') team.activeEffects.ignoreSwampOnce = true;
-      if (type === 'duel') team.activeEffects.shield = true;
-      addLog(draft, `${team.name} использовали жетон поддержки: ${type === 'move' ? '+1 ход' : type === 'swamp' ? 'игнор болота' : 'защита в дуэли'}.`);
+      if (type === 'duel') team.activeEffects.duelRetry = true;
+      addLog(draft, `${team.name} использовали жетон поддержки: ${type === 'move' ? '+1 ход' : type === 'swamp' ? 'игнор болота' : 'повтор дуэли'}.`);
     });
   };
 
@@ -781,22 +1022,7 @@ export default function HexTournamentMapApp() {
   const importJsonText = () => {
     try {
       const parsed = JSON.parse(state.importText);
-      setState({
-        ...parsed,
-        settings: {
-          showCoords: true,
-          showCosts: false,
-          showFog: true,
-          showBonuses: true,
-          showFlag: true,
-          revealBonusesThroughFog: false,
-          revealFlagThroughFog: false,
-          vividGrid: true,
-          victoryScore: 5,
-          ...(parsed.settings || {}),
-        },
-        history: [],
-      });
+      setState(normalizeLoadedState({ ...parsed, history: [] }));
     } catch (e) {
       alert('Не удалось импортировать JSON.');
     }
@@ -809,22 +1035,7 @@ export default function HexTournamentMapApp() {
     reader.onload = () => {
       try {
         const parsed = JSON.parse(String(reader.result));
-        setState({
-          ...parsed,
-          settings: {
-            showCoords: true,
-            showCosts: false,
-            showFog: true,
-            showBonuses: true,
-            showFlag: true,
-            revealBonusesThroughFog: false,
-            revealFlagThroughFog: false,
-            vividGrid: true,
-            victoryScore: 5,
-            ...(parsed.settings || {}),
-          },
-          history: [],
-        });
+        setState(normalizeLoadedState({ ...parsed, history: [] }));
       } catch {
         alert('Файл JSON не распознан.');
       }
@@ -834,68 +1045,77 @@ export default function HexTournamentMapApp() {
 
   const regenerateMap = (shape) => {
     mutateState((draft) => {
-      const count = draft.teams.length;
-      draft.map = shape === 'rect'
-        ? createRectMap(draft.editor?.rectCols || 8, draft.editor?.rectRows || 7)
-        : createRoundMap(draft.editor?.roundRadius || 4);
-      draft.teams = createInitialTeams(count);
-      draft.editor.teamForBase = draft.teams[0]?.id || 'red';
-      if (!draft.editor.roundRadius) draft.editor.roundRadius = 4;
-      if (!draft.editor.rectCols) draft.editor.rectCols = 8;
-      if (!draft.editor.rectRows) draft.editor.rectRows = 7;
-      draft.logs = [smallLog(`Создана новая ${shape === 'rect' ? 'прямоугольная' : 'круглая'} карта.`)];
-      draft.activeTeamId = draft.teams[0]?.id || null;
-      draft.phase = 'setup';
-      draft.winner = null;
-      draft.settings.showFog = true;
+      rebuildMapWithCurrentShape(draft, shape);
     });
   };
 
   const mapEntries = Object.values(state.map.hexes);
-  const size = 38;
+  const size = state.map.shape === 'rect' && state.map.cols > 14 ? 30 : 38;
   const pixels = mapEntries.map((hex) => ({ ...hex, ...hexToPixel(state.map, hex.q, hex.r, size) }));
   const minX = Math.min(...pixels.map((h) => h.x), 0) - 80;
   const maxX = Math.max(...pixels.map((h) => h.x), 0) + 80;
   const minY = Math.min(...pixels.map((h) => h.y), 0) - 80;
   const maxY = Math.max(...pixels.map((h) => h.y), 0) + 80;
-  const activeLeader = (() => {
-    if (!flagKey) return state.teams[0] ?? null;
-    return [...state.teams].filter((t) => t.posKey).sort((a, b) => mapDistance(state.map, parseKey(a.posKey), parseKey(flagKey)) - mapDistance(state.map, parseKey(b.posKey), parseKey(flagKey)) || b.score - a.score)[0] || null;
-  })();
 
-  const placementsInitial = Object.fromEntries(state.teams.map((t, i) => [t.id, i + 1]));
-  const [placements, setPlacements] = useState(placementsInitial);
+  const [placements, setPlacements] = useState(Object.fromEntries(state.teams.map((t, i) => [t.id, i + 1])));
   useEffect(() => {
     setPlacements(Object.fromEntries(state.teams.map((t, i) => [t.id, i + 1])));
   }, [state.teams.length]);
 
   const winnerTeam = state.winner ? getTeamById(state.teams, state.winner.teamId) : null;
+  const viewerTeams = [...state.teams].sort((a, b) => b.score - a.score || (getDistanceToFlag(a, state.map, flagKey) ?? 999) - (getDistanceToFlag(b, state.map, flagKey) ?? 999)).slice(0, 6);
 
   return (
     <TooltipProvider>
       <div className="min-h-screen bg-slate-950 text-slate-100 p-4">
         <div className="max-w-[1800px] mx-auto grid gap-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <div className="text-3xl font-semibold tracking-tight">Турнирная карта гексов</div>
-              <div className="text-slate-400 text-sm mt-1">Локальный MVP для проведения офлайн инженерных турниров</div>
-            </div>
-            <div className="flex flex-wrap gap-2 items-center">
-              <div className="flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100">
-                <span className="text-sm">Туман войны</span>
-                <Switch checked={!!state.settings.showFog} onCheckedChange={setFogEnabled} />
+          {state.mode === 'host' ? (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="text-3xl font-semibold tracking-tight">Турнирная карта гексов</div>
+                <div className="text-slate-400 text-sm mt-1">Локальный MVP для проведения офлайн инженерных турниров</div>
               </div>
-              <Button variant="outline" onClick={() => setState((prev) => ({ ...prev, mode: prev.mode === 'host' ? 'viewer' : 'host' }))} className="rounded-2xl bg-slate-900 border-slate-700 text-slate-100 hover:text-slate-50">
-                {state.mode === 'host' ? <Eye className="w-4 h-4 mr-2" /> : <EyeOff className="w-4 h-4 mr-2" />}
-                {state.mode === 'host' ? 'Режим зрителей' : 'Режим ведущего'}
-              </Button>
-              <Button variant="outline" onClick={undoLast} className="rounded-2xl bg-slate-900 border-slate-700 text-slate-100 hover:text-slate-50"><Undo2 className="w-4 h-4 mr-2" />Undo</Button>
-              <Button variant="outline" onClick={() => setState(createDemoState())} className="rounded-2xl bg-slate-900 border-slate-700 text-slate-100 hover:text-slate-50"><RotateCcw className="w-4 h-4 mr-2" />Сброс</Button>
+              <div className="flex flex-wrap gap-2 items-center">
+                <div className="flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100">
+                  <span className="text-sm">Туман войны</span>
+                  <Switch checked={!!state.settings.showFog} onCheckedChange={setFogEnabled} />
+                </div>
+                <Button variant="outline" onClick={() => setState((prev) => ({ ...prev, mode: 'viewer' }))} className="rounded-2xl bg-slate-900 border-slate-700 text-slate-100 hover:text-slate-50">
+                  <Eye className="w-4 h-4 mr-2" /> Режим зрителей
+                </Button>
+                <Button variant="outline" onClick={undoLast} className="rounded-2xl bg-slate-900 border-slate-700 text-slate-100 hover:text-slate-50"><Undo2 className="w-4 h-4 mr-2" />Undo</Button>
+                <Button variant="outline" onClick={() => setState(createDemoState())} className="rounded-2xl bg-slate-900 border-slate-700 text-slate-100 hover:text-slate-50"><RotateCcw className="w-4 h-4 mr-2" />Сброс</Button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="rounded-[28px] border border-slate-800 bg-slate-900/60 px-4 py-4 shadow-2xl backdrop-blur">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge className="rounded-xl bg-slate-800 text-slate-100 px-3 py-1.5">Раунд {state.currentRound}</Badge>
+                  {currentTeam && <Badge className="rounded-xl px-3 py-1.5 text-white" style={{ backgroundColor: currentTeam.color }}>{currentTeam.name}</Badge>}
+                  {activeLeader && <Badge className="rounded-xl bg-amber-600 text-white px-3 py-1.5"><Crown className="w-3.5 h-3.5 mr-1" /> {activeLeader.name}</Badge>}
+                  <Badge className="rounded-xl bg-slate-800 text-slate-100 px-3 py-1.5">Победа: флаг или {state.settings.victoryScore} очков</Badge>
+                </div>
+                <Button variant="outline" onClick={() => setState((prev) => ({ ...prev, mode: 'host' }))} className="rounded-2xl border-slate-700 bg-slate-950/70 text-slate-100">
+                  <EyeOff className="w-4 h-4 mr-2" /> Ведущий
+                </Button>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {viewerTeams.map((team) => (
+                  <div key={team.id} className="rounded-2xl border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100">
+                    <div className="flex items-center gap-2 font-medium">
+                      <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: team.color }} />
+                      {team.name}
+                    </div>
+                    <div className="mt-1 text-xs text-slate-400">Очки: {team.score} · До флага: {getDistanceToFlag(team, state.map, flagKey) ?? '—'}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className={`grid gap-4 ${state.mode === 'host' ? 'lg:grid-cols-[1.45fr_440px]' : 'grid-cols-1'}`}>
-            <Card className="rounded-[28px] border-slate-800 bg-slate-900/70 shadow-2xl overflow-hidden">
+            <Card className={`rounded-[28px] border-slate-800 bg-slate-900/70 shadow-2xl overflow-hidden ${state.mode === 'viewer' ? 'border-slate-700 bg-slate-900/40' : ''}`}>
               <CardContent className="p-0">
                 <div className="border-b border-slate-800 px-4 py-3 flex flex-col gap-3 bg-slate-950/60">
                   <div className="flex flex-wrap items-center justify-between gap-3">
@@ -906,7 +1126,7 @@ export default function HexTournamentMapApp() {
                     </div>
                     <div className="flex flex-wrap gap-2 items-center">
                       {state.phase === 'setup' && (
-                        <Button className="rounded-2xl h-12 px-5 text-base" onClick={startTournament}>
+                        <Button className="rounded-2xl h-12 px-5 text-base" onClick={startTournament} disabled={missingBaseTeams.length > 0}>
                           Начать турнир!
                         </Button>
                       )}
@@ -915,16 +1135,31 @@ export default function HexTournamentMapApp() {
                           Ходить
                         </Button>
                       )}
+                      {state.phase === 'movement' && (
+                        <Button variant="outline" className="rounded-2xl h-12 px-5 text-base border-slate-700 bg-slate-900 text-slate-100" onClick={endRound}>
+                          Завершить раунд
+                        </Button>
+                      )}
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2 items-center">
                     <Badge className="rounded-xl bg-slate-800 text-slate-100">Раунд {state.currentRound}</Badge>
-                    {currentTeam && <Badge className="rounded-xl" style={{ backgroundColor: currentTeam.color }}>{currentTeam.name}: {currentTeam.movement} х.</Badge>}
+                    {currentTeam && <Badge className="rounded-xl text-white" style={{ backgroundColor: currentTeam.color }}>{currentTeam.name}: {currentTeam.movement} х.</Badge>}
                     {activeLeader && <Badge className="rounded-xl bg-amber-600 text-white">Лидер: {activeLeader.name}</Badge>}
                     <Badge className="rounded-xl bg-slate-800 text-slate-100">Победа: флаг или {state.settings.victoryScore} очков</Badge>
                   </div>
                   <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-300">
-                    <div>{state.retreatSelection ? 'Выберите подсвеченный соседний гекс: туда будет отступать проигравший после дуэли.' : state.phase === 'movement' ? 'Клик по подсвеченному гексу перемещает активную команду. Когда у всех команд закончатся ходы, статус автоматически вернётся к начислению ходов.' : state.phase === 'scoring' ? 'Сейчас перемещение отключено. Введите результаты активности в панели справа и нажмите «Начислить ходы».' : 'Сейчас идёт подготовка карты. Перемещение отключено до старта турнира.'}</div>
+                    <div>
+                      {state.retreatSelection
+                        ? 'Выберите подсвеченный соседний гекс: туда будет отступать проигравший после дуэли.'
+                        : state.phase === 'movement'
+                          ? 'Клик по подсвеченному гексу перемещает активную команду.'
+                          : state.phase === 'scoring'
+                            ? 'Введите результаты активности и нажмите «Начислить ходы».'
+                            : missingBaseTeams.length > 0
+                              ? `Перед стартом расставьте базы: ${missingBaseTeams.map((t) => t.name).join(', ')}`
+                              : 'Сейчас идёт подготовка карты. Можно начинать турнир.'}
+                    </div>
                     {state.phase !== 'setup' && (
                       <div className="flex flex-wrap gap-2 items-center">
                         {state.teams.map((team) => (
@@ -937,6 +1172,14 @@ export default function HexTournamentMapApp() {
                   </div>
                 </div>
                 <div className="relative h-[75vh] bg-[radial-gradient(circle_at_top,#1e293b_0%,#020617_65%)]">
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.08),transparent_42%)] pointer-events-none" />
+                  {state.mode === 'viewer' && (
+                    <div className="absolute left-4 top-4 z-10 rounded-2xl border border-slate-700 bg-slate-950/70 px-4 py-3 text-slate-100 backdrop-blur">
+                      <div className="text-xs uppercase tracking-wide text-slate-400">Проекторный режим</div>
+                      <div className="mt-1 text-lg font-semibold">{currentPhase.title}</div>
+                      <div className="mt-1 text-sm text-slate-300">{currentTeam ? `${currentTeam.name} активна` : 'Нет активной команды'}</div>
+                    </div>
+                  )}
                   <svg viewBox={`${minX} ${minY} ${maxX - minX} ${maxY - minY}`} className="w-full h-full">
                     <defs>
                       <filter id="glow"><feGaussianBlur stdDeviation="3.5" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
@@ -957,7 +1200,7 @@ export default function HexTournamentMapApp() {
                           <polygon
                             points={getHexPoints(hex.x, hex.y, size - 2)}
                             fill={terrain.fill}
-                            opacity={fogged ? 0.24 : 0.95}
+                            opacity={fogged ? 0.22 : 0.96}
                             stroke={strokeColor}
                             strokeWidth={isRetreatOption ? 4 : isReachable ? 3 : 1.5}
                             filter={isRetreatOption || isReachable ? 'url(#glow)' : undefined}
@@ -1022,6 +1265,31 @@ export default function HexTournamentMapApp() {
                         <Button className="rounded-2xl" variant={state.map.shape === 'rect' ? 'default' : 'outline'} onClick={() => regenerateMap('rect')}>Прямоугольная</Button>
                         <Button className="rounded-2xl" variant={state.map.shape === 'round' ? 'default' : 'outline'} onClick={() => regenerateMap('round')}>Круглая</Button>
                       </div>
+
+                      <div className="space-y-2 rounded-2xl border border-slate-800 bg-slate-950/70 p-3">
+                        <Label className="text-slate-100">Количество команд</Label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            min={2}
+                            max={20}
+                            value={state.editor.teamCount || state.teams.length}
+                            onChange={(e) => setState((prev) => ({
+                              ...prev,
+                              editor: {
+                                ...prev.editor,
+                                teamCount: Math.max(2, Math.min(20, Number(e.target.value || 6))),
+                              },
+                            }))}
+                            className="rounded-2xl bg-slate-950 border-slate-700 text-slate-100 placeholder:text-slate-400"
+                          />
+                          <Button variant="outline" className="rounded-2xl" onClick={() => mutateState((draft) => rebuildMapWithCurrentShape(draft, draft.map.shape))}>
+                            Применить
+                          </Button>
+                        </div>
+                        <div className="text-xs text-slate-400">До 20 команд. После изменения карта и базы будут пересозданы.</div>
+                      </div>
+
                       {state.map.shape === 'rect' && (
                         <div className="space-y-2">
                           <Label className="text-slate-100">Размер прямоугольной карты</Label>
@@ -1062,7 +1330,6 @@ export default function HexTournamentMapApp() {
                             </div>
                             <Button variant="outline" className="rounded-2xl" onClick={() => regenerateMap('rect')}>Применить</Button>
                           </div>
-                          <div className="text-xs text-slate-300">Например: ширина 50, высота 5.</div>
                         </div>
                       )}
                       {state.map.shape === 'round' && (
@@ -1085,7 +1352,6 @@ export default function HexTournamentMapApp() {
                             />
                             <Button variant="outline" className="rounded-2xl" onClick={() => regenerateMap('round')}>Применить</Button>
                           </div>
-                          <div className="text-xs text-slate-300">Можно выбрать от 4 до 10 гексов от центра.</div>
                         </div>
                       )}
                       <Separator className="bg-slate-800" />
@@ -1126,7 +1392,7 @@ export default function HexTournamentMapApp() {
                           <Label className="text-slate-100">Команда для базы</Label>
                           <Select value={state.editor.teamForBase} onValueChange={(value) => setState((prev) => ({ ...prev, editor: { ...prev.editor, teamForBase: value } }))}>
                             <SelectTrigger className="rounded-2xl bg-slate-950 border-slate-700 text-slate-100 placeholder:text-slate-400"><SelectValue /></SelectTrigger>
-                            <SelectContent className="bg-slate-950 border-slate-700 text-slate-100">
+                            <SelectContent className="bg-slate-950 border-slate-700 text-slate-100 max-h-[240px]">
                               {state.teams.map((team) => <SelectItem key={team.id} value={team.id} className="text-slate-100 focus:text-slate-950">{team.name}</SelectItem>)}
                             </SelectContent>
                           </Select>
@@ -1150,9 +1416,10 @@ export default function HexTournamentMapApp() {
                           <div className="text-sm text-slate-300">Текущий раунд</div>
                           <div className="text-2xl font-semibold">{state.currentRound}</div>
                         </div>
-                        <div className="flex gap-2">
-                          <Button variant="outline" className="rounded-2xl" onClick={() => mutateState((draft) => { draft.currentRound += 1; resetRoundMovement(draft); draft.phase = 'scoring'; addLog(draft, `Начат раунд ${draft.currentRound}. Ожидается начисление ходов.`); })}>След. раунд</Button>
+                        <div className="flex gap-2 flex-wrap justify-end">
+                          <Button variant="outline" className="rounded-2xl" onClick={() => mutateState((draft) => { draft.currentRound += 1; resetRoundMovement(draft); draft.phase = 'scoring'; addLog(draft, `Начат раунд ${draft.currentRound}.`); })}>След. раунд</Button>
                           <Button variant="outline" className="rounded-2xl" onClick={() => mutateState((draft) => { resetRoundMovement(draft); draft.phase = 'scoring'; addLog(draft, 'Очки движения раунда сброшены.'); })}>Сброс хода</Button>
+                          <Button variant="outline" className="rounded-2xl" onClick={endRound}>Завершить раунд</Button>
                         </div>
                       </div>
                       <div className="space-y-2">
@@ -1162,7 +1429,7 @@ export default function HexTournamentMapApp() {
                               <span className="w-3 h-3 rounded-full" style={{ backgroundColor: team.color }} />
                               <span className="text-slate-100">{team.name}</span>
                             </div>
-                            <Input type="number" min={1} max={6} value={placements[team.id] ?? ''} onChange={(e) => setPlacements((prev) => ({ ...prev, [team.id]: Number(e.target.value || 0) }))} className="rounded-xl bg-slate-950 border-slate-700 text-slate-50 placeholder:text-slate-400" style={{ color: '#f8fafc' }} />
+                            <Input type="number" min={1} max={20} value={placements[team.id] ?? ''} onChange={(e) => setPlacements((prev) => ({ ...prev, [team.id]: Number(e.target.value || 0) }))} className="rounded-xl bg-slate-950 border-slate-700 text-slate-50 placeholder:text-slate-400" style={{ color: '#f8fafc' }} />
                           </div>
                         ))}
                       </div>
@@ -1174,7 +1441,7 @@ export default function HexTournamentMapApp() {
                         <Label className="text-slate-100">Активная команда</Label>
                         <Select value={state.activeTeamId || ''} onValueChange={(value) => setState((prev) => ({ ...prev, activeTeamId: value }))}>
                           <SelectTrigger className="rounded-2xl bg-slate-950 border-slate-700 text-slate-100 placeholder:text-slate-400"><SelectValue /></SelectTrigger>
-                          <SelectContent className="bg-slate-950 border-slate-700 text-slate-100">
+                          <SelectContent className="bg-slate-950 border-slate-700 text-slate-100 max-h-[240px]">
                             {state.teams.map((team) => <SelectItem key={team.id} value={team.id} className="text-slate-100 focus:text-slate-950">{team.name}</SelectItem>)}
                           </SelectContent>
                         </Select>
@@ -1183,30 +1450,36 @@ export default function HexTournamentMapApp() {
                     </TabsContent>
 
                     <TabsContent value="teams" className="space-y-3 mt-0">
-                      {state.teams.map((team) => (
-                        <Card key={team.id} className="rounded-2xl border-slate-800 bg-slate-950/80">
-                          <CardContent className="p-4 space-y-3">
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-2">
-                                <span className="w-3 h-3 rounded-full" style={{ backgroundColor: team.color }} />
-                                <Input value={team.name} onChange={(e) => setState((prev) => ({ ...prev, teams: prev.teams.map((t) => t.id === team.id ? { ...t, name: e.target.value } : t) }))} className="h-8 rounded-xl bg-slate-900 border-slate-700 text-slate-50 placeholder:text-slate-400" style={{ color: '#f8fafc' }} />
+                      {state.teams.map((team) => {
+                        const effects = getActiveEffectsSummary(team);
+                        const distanceToFlag = getDistanceToFlag(team, state.map, flagKey);
+                        return (
+                          <Card key={team.id} className="rounded-2xl border-slate-800 bg-slate-950/80">
+                            <CardContent className="p-4 space-y-3">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: team.color }} />
+                                  <Input value={team.name} onChange={(e) => setState((prev) => ({ ...prev, teams: prev.teams.map((t) => t.id === team.id ? { ...t, name: e.target.value } : t) }))} className="h-8 rounded-xl bg-slate-900 border-slate-700 text-slate-50 placeholder:text-slate-400" style={{ color: '#f8fafc' }} />
+                                </div>
+                                <Badge className="rounded-xl bg-slate-800 shrink-0">{team.score} очк.</Badge>
                               </div>
-                              <Badge className="rounded-xl bg-slate-800">{team.score} очк.</Badge>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2 text-sm text-slate-200">
-                              <div>Позиция: {team.posKey || '—'}</div>
-                              <div>База: {team.baseKey || '—'}</div>
-                              <div>Ходы: {team.movement}</div>
-                              <div>Жетоны: {team.supportTokens}</div>
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                              <Button size="sm" variant="outline" className="rounded-xl" disabled={team.supportTokens <= 0} onClick={() => spendSupport(team.id, 'move')}>+1 ход</Button>
-                              <Button size="sm" variant="outline" className="rounded-xl" disabled={team.supportTokens <= 0} onClick={() => spendSupport(team.id, 'swamp')}>Игнор болота</Button>
-                              <Button size="sm" variant="outline" className="rounded-xl" disabled={team.supportTokens <= 0} onClick={() => spendSupport(team.id, 'duel')}>Защита дуэли</Button>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
+                              <div className="grid grid-cols-2 gap-2 text-sm text-slate-200">
+                                <div>Позиция: {team.posKey || '—'}</div>
+                                <div>База: {team.baseKey || '—'}</div>
+                                <div>Ходы: {team.movement}</div>
+                                <div>Жетоны: {team.supportTokens}</div>
+                                <div>До флага: {distanceToFlag ?? '—'}</div>
+                                <div>Эффекты: {effects.length ? effects.join(', ') : '—'}</div>
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                <Button size="sm" variant="outline" className="rounded-xl" disabled={team.supportTokens <= 0} onClick={() => spendSupport(team.id, 'move')}>+1 ход</Button>
+                                <Button size="sm" variant="outline" className="rounded-xl" disabled={team.supportTokens <= 0} onClick={() => spendSupport(team.id, 'swamp')}>Игнор болота</Button>
+                                <Button size="sm" variant="outline" className="rounded-xl" disabled={team.supportTokens <= 0} onClick={() => spendSupport(team.id, 'duel')}>Повтор дуэли</Button>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
                     </TabsContent>
 
                     <TabsContent value="log" className="mt-0">
@@ -1248,7 +1521,7 @@ export default function HexTournamentMapApp() {
                       </div>
                       <div className="space-y-2">
                         <Label className="text-slate-100">Победные очки</Label>
-                        <Input type="number" min={1} max={20} value={state.settings.victoryScore} onChange={(e) => setState((prev) => ({ ...prev, settings: { ...prev.settings, victoryScore: Number(e.target.value || 5) } }))} className="rounded-2xl bg-slate-950 border-slate-700 text-slate-100 placeholder:text-slate-400" />
+                        <Input type="number" min={1} max={50} value={state.settings.victoryScore} onChange={(e) => setState((prev) => ({ ...prev, settings: { ...prev.settings, victoryScore: Number(e.target.value || 15) } }))} className="rounded-2xl bg-slate-950 border-slate-700 text-slate-100 placeholder:text-slate-400" />
                       </div>
                     </TabsContent>
                   </Tabs>
@@ -1266,22 +1539,54 @@ export default function HexTournamentMapApp() {
             {state.duel && (() => {
               const attacker = getTeamById(state.teams, state.duel.attackerId);
               const defender = getTeamById(state.teams, state.duel.defenderId);
+              const defenderHasShield = !!defender?.activeEffects.shield;
               return (
                 <div className="space-y-4">
                   <div className="text-slate-300">Сразитесь офлайн и укажите победителя. Победитель остаётся на спорном гексе, после чего ведущий выберет один из подсвеченных соседних гексов для отступления проигравшего.</div>
                   <div className="grid grid-cols-2 gap-3">
-                    {[attacker, defender].map((team) => (
-                      <Button key={team.id} onClick={() => resolveDuel(team.id)} className="rounded-2xl h-16 text-base" style={{ backgroundColor: team.color }}>
+                    {[attacker, defender].map((team) => team && (
+                      <Button key={team.id} onClick={() => resolveDuel(team.id)} className="rounded-2xl h-16 text-base text-white" style={{ backgroundColor: team.color }}>
                         {team.name}
                       </Button>
                     ))}
                   </div>
+                  {defenderHasShield && (
+                    <div className="rounded-2xl border border-emerald-700/50 bg-emerald-950/40 p-3 text-sm text-emerald-100">
+                      У защищающейся команды активен щит. Можно не принимать бой и сохранить позицию.
+                    </div>
+                  )}
                 </div>
               );
             })()}
             <DialogFooter>
+              {state.duel && getTeamById(state.teams, state.duel.defenderId)?.activeEffects.shield && (
+                <Button variant="outline" className="rounded-2xl border-emerald-700 bg-emerald-950/40 text-emerald-100" onClick={useShieldToHold}>Потратить щит</Button>
+              )}
               <Button variant="outline" className="rounded-2xl" onClick={() => setState((prev) => ({ ...prev, duel: null }))}>Отмена</Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={!!state.duelRetryPrompt} onOpenChange={() => {}}>
+          <DialogContent className="rounded-[28px] bg-slate-950 border-slate-800 text-slate-50">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-2xl"><Radar className="w-6 h-6 text-cyan-400" /> Повторная дуэль</DialogTitle>
+            </DialogHeader>
+            {state.duelRetryPrompt && (() => {
+              const duel = state.duelRetryPrompt.duel;
+              const provisionalWinner = getTeamById(state.teams, state.duelRetryPrompt.provisionalWinnerId);
+              const loserId = duel.attackerId === state.duelRetryPrompt.provisionalWinnerId ? duel.defenderId : duel.attackerId;
+              const loser = getTeamById(state.teams, loserId);
+              return (
+                <div className="space-y-4">
+                  <div className="text-slate-300">{loser?.name} могут потратить эффект «Повтор дуэли» и потребовать переигровку против {provisionalWinner?.name}. Принять результат или провести дуэль заново?</div>
+                  <div className="flex gap-2 flex-wrap">
+                    <Button className="rounded-2xl" onClick={retryDuel}><Sparkles className="w-4 h-4 mr-2" /> Переиграть дуэль</Button>
+                    <Button variant="outline" className="rounded-2xl" onClick={acceptDuelResult}>Оставить результат</Button>
+                  </div>
+                </div>
+              );
+            })()}
           </DialogContent>
         </Dialog>
 
